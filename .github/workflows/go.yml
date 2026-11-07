@@ -1,0 +1,19 @@
+name: Go
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      # Los tests no dependen de data/, solo de CSV pequeños creados en memoria
+      - name: Análisis estático
+        run: go vet ./...
+      - name: Pruebas con detector de condiciones de carrera
+        run: go test -race ./...

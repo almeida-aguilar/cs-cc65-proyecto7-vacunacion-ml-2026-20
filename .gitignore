@@ -7,3 +7,12 @@ data/
 env/
 __pycache__/
 *.pyc
+
+# Go
+*.exe
+*.test
+/bin/
+modelo.json
+modelo_*.json
+# Los reportes de Go (CSV pequeños) sí se versionan
+!reports/go/*.csv
