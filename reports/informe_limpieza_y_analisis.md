@@ -74,7 +74,7 @@ Texto normalizado (mayúsculas, sin tildes, espacios colapsados, p. ej. `"20  A 
 - **Variables (solo información disponible en la 1ª dosis, sin fuga):** edad, `edad_imputada`, sexo, grupo etario (9 tramos), fabricante dosis 1 (agrupado), departamento (25), `zona_rural`, `pct_rural_provincia`, `dias_desde_inicio` de campaña, `mes_sin/mes_cos` (estacionalidad), `te_provincia`, `te_distrito` (target-encoding suavizado, **leave-one-out y calculado solo con train**).
 - **No** se usan `n_dosis`, fechas posteriores ni `max_dosis` (fuga del objetivo).
 - Estandarización (media/desv. de train) de edad, días y te_*; parámetros en `data/scaler.json`.
-- **Split:** 80/20 determinista por hash del UUID (columna `split`).
+- **Split:** 80/20 determinista por un hash del UUID distinto al del muestreo (columna `split`): train 1,199,305 y valid 299,950.
 
 **Dataset final** (`data/dataset_entrenamiento.csv`, no versionado): 1,499,255 personas × 54 columnas, **0 nulos**, UUID únicos, todo numérico para el cargador en Go. Muestra estratificada 50 % rural / 50 % urbana (por hash del UUID, reproducible) para reforzar el foco rural; la columna `peso_muestreo` permite recuperar las tasas poblacionales (deserción en la muestra 7.46 % vs 6.59 % real).
 

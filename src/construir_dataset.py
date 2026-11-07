@@ -29,6 +29,7 @@ PORC_TRAIN = 80
 SUAVIZADO_TE = 20.0
 TAMANO_MUESTRA = 1_500_000
 SEMILLA_HASH = np.uint64(11400714819323198485)
+SEMILLA_HASH_SPLIT = np.uint64(14029467366897019727)
 
 CORTES_EDAD = [0, 5, 12, 18, 30, 40, 50, 60, 70, 111]
 ETIQ_EDAD = ["0-4", "5-11", "12-17", "18-29", "30-39", "40-49", "50-59", "60-69", "70+"]
@@ -55,7 +56,10 @@ def _cargar_particion(archivo: Path) -> pd.DataFrame:
                                 df["zona_rural"]).astype("int8")
     h = (df["uuid"].to_numpy().astype(np.uint64) * SEMILLA_HASH)
     df["u"] = (h >> np.uint64(11)).astype(np.float64) / float(2 ** 53)   # uniforme [0,1)
-    df["train"] = ((df["u"] * 100) < PORC_TRAIN).astype("int8")
+    # division train/valid con un hash DISTINTO al del muestreo (si no, el muestreo por u<frac sesgaria el split)
+    h2 = (df["uuid"].to_numpy().astype(np.uint64) * SEMILLA_HASH_SPLIT) ^ np.uint64(0x9E3779B97F4A7C15)
+    u2 = (h2 >> np.uint64(11)).astype(np.float64) / float(2 ** 53)
+    df["train"] = ((u2 * 100) < PORC_TRAIN).astype("int8")
     return df
 
 
