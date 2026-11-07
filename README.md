@@ -107,7 +107,7 @@ go test ./...
 - `benchmark_workers_go.csv` (`cmd/benchmark`): `etapa,workers,segundos,speedup` para las etapas `carga` y `entrenamiento`.
 
 ### Notas importantes
-- Entrenar con 1,2 millones de filas usa unos **1,4 GB** (medido: 1,19 GB de heap y 1,38 GB de memoria del sistema).
+- Entrenar con 1,2 millones de filas usa unos **1,3 GB** (medido: 1,23 GB de heap y 1,32 GB de memoria del sistema).
 - Con datos simulados o de prueba, usa siempre `-nombre prueba` en `cmd/entrenar` y `-salida reports/go/prueba_benchmark.csv` en `cmd/benchmark`: los archivos `reports/go/prueba*` están ignorados por git y así no se suben por error resultados que no son reales.
 - `valid_raw.csv` se divide en dos mitades: la **validación** se usa para la parada temprana y para elegir el umbral, y las **métricas finales** se miden en la mitad de **prueba**, que no se usó para decidir nada.
 - Si el AUC en prueba pasa de 0,95, el programa avisa de una posible fuga de datos.
@@ -151,17 +151,17 @@ Mediana de 3 repeticiones por cantidad de workers. Speedup = tiempo con 1 worker
 
 | Etapa | Workers | Tiempo (s) | Speedup |
 |---|---|---|---|
-| carga | 1 | 1,683 | 1,00x |
-| carga | 2 | 0,918 | 1,83x |
-| carga | 4 | 0,526 | 3,20x |
-| carga | 8 | 0,360 | 4,68x |
-| carga | 16 | 0,346 | 4,87x |
-| entrenamiento | 1 | 0,891 | 1,00x |
-| entrenamiento | 2 | 0,542 | 1,65x |
-| entrenamiento | 4 | 0,370 | 2,41x |
-| entrenamiento | 8 | 0,311 | 2,86x |
-| entrenamiento | 16 | 0,318 | 2,80x |
+| carga | 1 | 1,686 | 1,00x |
+| carga | 2 | 0,919 | 1,84x |
+| carga | 4 | 0,516 | 3,27x |
+| carga | 8 | 0,357 | 4,72x |
+| carga | 16 | 0,349 | 4,84x |
+| entrenamiento | 1 | 0,889 | 1,00x |
+| entrenamiento | 2 | 0,543 | 1,64x |
+| entrenamiento | 4 | 0,373 | 2,38x |
+| entrenamiento | 8 | 0,310 | 2,87x |
+| entrenamiento | 16 | 0,310 | 2,87x |
 
 - La pérdida final del entrenamiento fue la misma con todas las cantidades de workers (diferencia relativa de 5,8e-14), así que el resultado no depende del número de goroutines.
 - El speedup no es lineal por la ley de Amdahl: una parte del trabajo sigue siendo secuencial. En la carga, un solo productor lee el archivo del disco; en el entrenamiento, hay que sumar los gradientes de todos los workers antes de actualizar los pesos.
-- A partir de 8 workers casi no hay mejora (carga 4,68x a 4,87x; entrenamiento 2,86x a 2,80x): la parte secuencial domina y el costo de coordinar más goroutines compensa lo que se gana.
+- A partir de 8 workers casi no hay mejora (carga 4,72x a 4,84x; entrenamiento 2,87x a 2,87x): la parte secuencial domina y el costo de coordinar más goroutines compensa lo que se gana.
