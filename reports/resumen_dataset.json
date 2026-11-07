@@ -1,0 +1,18 @@
+{
+  "personas_con_ventana": 30654524,
+  "sin_match_rural": 162586,
+  "provincias_sin_match": {
+    "MADRE DE DIOS|MANU": 21714,
+    "MADRE DE DIOS|TAHUAMANU": 11942,
+    "MADRE DE DIOS|TAMBOPATA": 128930
+  },
+  "n_rural": 4756338,
+  "n_urbano": 25898186,
+  "muestra": 1499255,
+  "tasa_deserto_muestra": 0.07456236597510096,
+  "tasa_deserto_poblacion": 0.0659038776788705,
+  "nulos_dataset_final": 0,
+  "columnas": 54,
+  "uuid_unicos": true,
+  "segundos": 74.59324169158936
+}

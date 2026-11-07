@@ -1,0 +1,164 @@
+{
+  "edad_outliers": {
+    "nulos": 727,
+    "outliers": 236,
+    "crudos_mayor_110": 240
+  },
+  "global": {
+    "personas": 30654524,
+    "desertores": 2020252,
+    "tasa": 0.0659038776788705
+  },
+  "rural_vs_urbano": {
+    "tasa_rural": 0.0869086679710315,
+    "tasa_urbana": 0.062046237524126205,
+    "riesgo_relativo": 1.4007081080015162,
+    "diferencia_pp": 2.4862430446905295,
+    "ic95_diff_pp": [
+      2.459275199278719,
+      2.51321089010234
+    ],
+    "personas_rural": 4756338,
+    "personas_urbana": 25898186
+  },
+  "cramers_v": [
+    {
+      "variable": "trimestre_d1",
+      "cramers_v": 0.4869,
+      "chi2": 7267622.8
+    },
+    {
+      "variable": "grupo_etario",
+      "cramers_v": 0.3172,
+      "chi2": 3083967.9
+    },
+    {
+      "variable": "fab_agrupado",
+      "cramers_v": 0.2515,
+      "chi2": 1939681.8
+    },
+    {
+      "variable": "departamento",
+      "cramers_v": 0.0773,
+      "chi2": 183374.4
+    },
+    {
+      "variable": "zona_rural",
+      "cramers_v": 0.0363,
+      "chi2": 40348.9
+    },
+    {
+      "variable": "sexo",
+      "cramers_v": 0.0243,
+      "chi2": 18115.8
+    }
+  ],
+  "top5_distritos": [
+    {
+      "departamento": "CUSCO",
+      "provincia": "QUISPICANCHI",
+      "distrito": "CCARHUAYO",
+      "personas": 619,
+      "tasa": 0.4668820678513732
+    },
+    {
+      "departamento": "LORETO",
+      "provincia": "ALTO AMAZONAS",
+      "distrito": "BALSAPUERTO",
+      "personas": 11590,
+      "tasa": 0.406816220880069
+    },
+    {
+      "departamento": "LORETO",
+      "provincia": "DATEM DEL MARANON",
+      "distrito": "CAHUAPANAS",
+      "personas": 1861,
+      "tasa": 0.4030091348737238
+    },
+    {
+      "departamento": "LORETO",
+      "provincia": "PUTUMAYO",
+      "distrito": "TENIENTE MANUEL CLAVERO",
+      "personas": 1833,
+      "tasa": 0.37752318603382434
+    },
+    {
+      "departamento": "PUNO",
+      "provincia": "SAN ROMAN",
+      "distrito": "SAN MIGUEL",
+      "personas": 4422,
+      "tasa": 0.373134328358209
+    }
+  ],
+  "top5_prov_rurales": [
+    {
+      "departamento": "AMAZONAS",
+      "provincia": "CONDORCANQUI",
+      "personas": 27711,
+      "tasa": 0.23034174154667822
+    },
+    {
+      "departamento": "LORETO",
+      "provincia": "LORETO",
+      "personas": 60178,
+      "tasa": 0.2187510385855296
+    },
+    {
+      "departamento": "LORETO",
+      "provincia": "DATEM DEL MARANON",
+      "personas": 38664,
+      "tasa": 0.19723774053382992
+    },
+    {
+      "departamento": "UCAYALI",
+      "provincia": "ATALAYA",
+      "personas": 42071,
+      "tasa": 0.19683392360533383
+    },
+    {
+      "departamento": "LORETO",
+      "provincia": "PUTUMAYO",
+      "personas": 8109,
+      "tasa": 0.19509187322727833
+    }
+  ],
+  "edad_imputada_personas": 521,
+  "benchmark": [
+    {
+      "workers": 1,
+      "map_s": 69.61351299285889,
+      "filas": 5541942,
+      "speedup": 1.0
+    },
+    {
+      "workers": 2,
+      "map_s": 42.23410701751709,
+      "filas": 5541942,
+      "speedup": 1.6482771368644273
+    },
+    {
+      "workers": 4,
+      "map_s": 23.108596086502075,
+      "filas": 5541942,
+      "speedup": 3.012450982841001
+    },
+    {
+      "workers": 6,
+      "map_s": 16.58753514289856,
+      "filas": 5541942,
+      "speedup": 4.1967364284778474
+    },
+    {
+      "workers": 8,
+      "map_s": 14.326924800872803,
+      "filas": 5541942,
+      "speedup": 4.858929181272592
+    },
+    {
+      "workers": 12,
+      "map_s": 11.659349918365479,
+      "filas": 5541942,
+      "speedup": 5.970617013835878
+    }
+  ]
+}
