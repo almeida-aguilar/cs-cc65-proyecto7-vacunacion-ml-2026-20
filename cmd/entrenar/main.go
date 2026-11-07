@@ -11,6 +11,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -36,16 +37,32 @@ type opciones struct {
 
 // reporteMetricas es lo que se guarda en <nombre>_metricas.json.
 type reporteMetricas struct {
-	Configuracion     logreg.Configuracion `json:"configuracion"`
-	Metricas          *logreg.Metricas     `json:"metricas"`
-	Umbral            float64              `json:"umbral"`
-	MejorEpoca        int                  `json:"mejor_epoca"`
-	SegundosCarga     float64              `json:"segundos_carga"`
-	SegundosEntrena   float64              `json:"segundos_entrenamiento"`
-	ColumnasExcluidas []string             `json:"columnas_excluidas"`
-	NumVariables      int                  `json:"num_variables"`
-	FilasTrain        int                  `json:"filas_train"`
-	FilasValid        int                  `json:"filas_valid"`
+	Configuracion      logreg.Configuracion `json:"configuracion"`
+	MetricasValidacion *logreg.Metricas     `json:"metricas_validacion"`
+	MetricasPrueba     *logreg.Metricas     `json:"metricas_prueba"`
+	Umbral             float64              `json:"umbral"`
+	MejorEpoca         int                  `json:"mejor_epoca"`
+	SegundosCarga      float64              `json:"segundos_carga"`
+	SegundosEntrena    float64              `json:"segundos_entrenamiento"`
+	ColumnasExcluidas  []string             `json:"columnas_excluidas"`
+	NumVariables       int                  `json:"num_variables"`
+	FilasTrain         int                  `json:"filas_train"`
+	FilasValidacion    int                  `json:"filas_validacion"`
+	FilasPrueba        int                  `json:"filas_prueba"`
+	MemoriaMB          memoria              `json:"memoria_mb"`
+}
+
+// memoria guarda el uso de memoria del programa, en megabytes.
+type memoria struct {
+	HeapAlloc float64 `json:"heap_alloc"` // bytes de heap en uso
+	Sys       float64 `json:"sys"`        // memoria total pedida al sistema operativo
+}
+
+func medirMemoria() memoria {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	const mb = 1024 * 1024
+	return memoria{HeapAlloc: float64(m.HeapAlloc) / mb, Sys: float64(m.Sys) / mb}
 }
 
 func leerOpciones() opciones {
@@ -101,6 +118,11 @@ func main() {
 	}
 	fmt.Printf("Variables usadas: %d (excluidas: %v)\n", len(columnas), excluir)
 
+	// valid se divide en dos mitades: "validacion" decide la parada temprana y
+	// el umbral; "prueba" no se usa para decidir nada y solo sirve para medir.
+	validacion, prueba := valid.Dividir(0.5, 42)
+	fmt.Printf("Validación: %d filas | Prueba: %d filas\n", validacion.Len(), prueba.Len())
+
 	// 3) Desbalance de clases
 	proporcion := train.ProporcionPositivos()
 	peso := o.pesoPositivo
@@ -120,7 +142,7 @@ func main() {
 	cfg.L2 = o.l2
 	cfg.Workers = o.workers
 	cfg.PesoClasePositiva = peso
-	cfg.Validacion = valid
+	cfg.Validacion = validacion
 	cfg.Paciencia = o.paciencia
 	cfg.MejoraMinima = 1e-4
 
@@ -147,28 +169,41 @@ func main() {
 	}
 	modelo := resultado.Modelo
 
-	probabilidades, err := modelo.ProbabilidadLote(valid.X, o.workers)
+	// El umbral se elige solo con la mitad de validación.
+	probabilidades, err := modelo.ProbabilidadLote(validacion.X, o.workers)
 	if err != nil {
 		fmt.Println("Error al calcular probabilidades:", err)
 		return
 	}
-	umbral, _ := logreg.MejorUmbralSegun(probabilidades, valid.Y, logreg.CriterioSensibilidadMinima(o.sensibilidadMin))
+	umbral, _ := logreg.MejorUmbralSegun(probabilidades, validacion.Y, logreg.CriterioSensibilidadMinima(o.sensibilidadMin))
 	modelo.Umbral = umbral
 
-	metricas, err := logreg.Evaluar(modelo, valid, o.workers)
+	metricasValidacion, err := logreg.Evaluar(modelo, validacion, o.workers)
 	if err != nil {
-		fmt.Println("Error al evaluar:", err)
+		fmt.Println("Error al evaluar en validación:", err)
 		return
 	}
-	imprimirMetricas(metricas, umbral, resultado.MejorEpoca, resultado.DuracionTotal)
+	metricasPrueba, err := logreg.Evaluar(modelo, prueba, o.workers)
+	if err != nil {
+		fmt.Println("Error al evaluar en prueba:", err)
+		return
+	}
+	fmt.Printf("\nEntrenamiento terminado en %v (mejor época: %d)\n", resultado.DuracionTotal.Round(time.Millisecond), resultado.MejorEpoca)
+	fmt.Printf("Umbral elegido (con validación): %.2f\n", umbral)
+	imprimirMetricas("Métricas en validación (usadas para parada temprana y umbral)", metricasValidacion)
+	imprimirMetricas("Métricas en prueba (datos no usados para elegir nada)", metricasPrueba)
 
 	// 7) Variables más influyentes
 	imprimirTopPesos(modelo, columnas, 10)
 
-	// 8) Advertencia de posible fuga de datos
-	if metricas.AUC > 0.95 {
-		fmt.Printf("\nADVERTENCIA: AUC = %.4f > 0.95. Posible fuga de datos: revisa que ninguna variable contenga información del resultado.\n", metricas.AUC)
+	// 8) Advertencia de posible fuga de datos (sobre prueba)
+	if metricasPrueba.AUC > 0.95 {
+		fmt.Printf("\nADVERTENCIA: AUC en prueba = %.4f > 0.95. Posible fuga de datos: revisa que ninguna variable contenga información del resultado.\n", metricasPrueba.AUC)
 	}
+
+	// Memoria al final del programa
+	mem := medirMemoria()
+	fmt.Printf("\nMemoria: HeapAlloc %.1f MB | Sys %.1f MB\n", mem.HeapAlloc, mem.Sys)
 
 	// 9) Guardar modelo y reportes
 	modelo.NombresVariables = columnas
@@ -179,16 +214,19 @@ func main() {
 	fmt.Println("\nModelo guardado en", o.salida)
 
 	reporte := reporteMetricas{
-		Configuracion:     cfg,
-		Metricas:          metricas,
-		Umbral:            umbral,
-		MejorEpoca:        resultado.MejorEpoca,
-		SegundosCarga:     segundosCarga,
-		SegundosEntrena:   resultado.DuracionTotal.Seconds(),
-		ColumnasExcluidas: excluir,
-		NumVariables:      len(columnas),
-		FilasTrain:        train.Len(),
-		FilasValid:        valid.Len(),
+		Configuracion:      cfg,
+		MetricasValidacion: metricasValidacion,
+		MetricasPrueba:     metricasPrueba,
+		MemoriaMB:          mem,
+		Umbral:             umbral,
+		MejorEpoca:         resultado.MejorEpoca,
+		SegundosCarga:      segundosCarga,
+		SegundosEntrena:    resultado.DuracionTotal.Seconds(),
+		ColumnasExcluidas:  excluir,
+		NumVariables:       len(columnas),
+		FilasTrain:         train.Len(),
+		FilasValidacion:    validacion.Len(),
+		FilasPrueba:        prueba.Len(),
 	}
 	if err := guardarReportes(o, reporte, resultado.Historial); err != nil {
 		fmt.Println("Error al guardar los reportes:", err)
@@ -213,10 +251,8 @@ func mismasColumnas(a, b []string) bool {
 	return true
 }
 
-func imprimirMetricas(m *logreg.Metricas, umbral float64, mejorEpoca int, duracion time.Duration) {
-	fmt.Printf("\nEntrenamiento terminado en %v (mejor época: %d)\n", duracion.Round(time.Millisecond), mejorEpoca)
-	fmt.Printf("Umbral elegido: %.2f\n\n", umbral)
-	fmt.Println("Métricas en validación:")
+func imprimirMetricas(titulo string, m *logreg.Metricas) {
+	fmt.Printf("\n%s:\n", titulo)
 	fmt.Printf("  Exactitud     %.4f\n", m.Exactitud)
 	fmt.Printf("  Precisión     %.4f\n", m.Precision)
 	fmt.Printf("  Sensibilidad  %.4f\n", m.Sensibilidad)
