@@ -1,0 +1,9 @@
+# Datos pesados (no se versionan)
+data/
+*.csv
+*.parquet
+*.7z
+*.zip
+env/
+__pycache__/
+*.pyc
