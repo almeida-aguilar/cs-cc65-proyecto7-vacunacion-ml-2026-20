@@ -26,7 +26,7 @@
     "sensibilidad": 0.8009880028228652,
     "especificidad": 0.7075642495978764,
     "f1": 0.2979051493626864,
-    "perdida_log": 0.5058105027053801,
+    "perdida_log": 0.5058105027053802,
     "auc": 0.8288731756606974
   },
   "metricas_prueba": {
@@ -48,8 +48,8 @@
   },
   "umbral": 0.46,
   "mejor_epoca": 6,
-  "segundos_carga": 0.4243504,
-  "segundos_entrenamiento": 1.2692572,
+  "segundos_carga": 0.426828,
+  "segundos_entrenamiento": 1.3309941,
   "columnas_excluidas": [
     "dias_desde_inicio",
     "mes_sin",
@@ -60,7 +60,7 @@
   "filas_validacion": 149975,
   "filas_prueba": 149975,
   "memoria_mb": {
-    "heap_alloc": 1113.5837173461914,
-    "sys": 1275.238525390625
+    "heap_alloc": 1113.5490036010742,
+    "sys": 1283.918212890625
   }
 }

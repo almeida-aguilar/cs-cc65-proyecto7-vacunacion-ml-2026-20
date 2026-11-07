@@ -48,15 +48,15 @@
   },
   "umbral": 0.48,
   "mejor_epoca": 5,
-  "segundos_carga": 0.4458051,
-  "segundos_entrenamiento": 1.2930238,
+  "segundos_carga": 0.4837401,
+  "segundos_entrenamiento": 1.2121934,
   "columnas_excluidas": null,
   "num_variables": 50,
   "filas_train": 1199305,
   "filas_validacion": 149975,
   "filas_prueba": 149975,
   "memoria_mb": {
-    "heap_alloc": 1192.7396774291992,
-    "sys": 1378.816650390625
+    "heap_alloc": 1230.1012496948242,
+    "sys": 1319.738525390625
   }
 }
