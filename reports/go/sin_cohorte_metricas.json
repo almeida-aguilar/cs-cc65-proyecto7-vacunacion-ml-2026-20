@@ -1,0 +1,66 @@
+{
+  "configuracion": {
+    "tasa_aprendizaje": 0.1,
+    "decaimiento": 0,
+    "epocas": 30,
+    "tamano_lote": 4096,
+    "workers": 0,
+    "l2": 0,
+    "peso_clase_positiva": 12.432473903498947,
+    "semilla": 42,
+    "tolerancia": 0.000001,
+    "paciencia": 3,
+    "mejora_minima": 0.0001
+  },
+  "metricas_validacion": {
+    "matriz": {
+      "vp": 9080,
+      "fp": 40543,
+      "vn": 98096,
+      "fn": 2256
+    },
+    "n": 149975,
+    "umbral": 0.46,
+    "exactitud": 0.714625770961827,
+    "precision": 0.18297966668681862,
+    "sensibilidad": 0.8009880028228652,
+    "especificidad": 0.7075642495978764,
+    "f1": 0.2979051493626864,
+    "perdida_log": 0.5058105027053801,
+    "auc": 0.8288731756606974
+  },
+  "metricas_prueba": {
+    "matriz": {
+      "vp": 9034,
+      "fp": 40697,
+      "vn": 98110,
+      "fn": 2134
+    },
+    "n": 149975,
+    "umbral": 0.46,
+    "exactitud": 0.7144124020670112,
+    "precision": 0.1816573163620277,
+    "sensibilidad": 0.8089183381088825,
+    "especificidad": 0.7068087344298198,
+    "f1": 0.2966879587513752,
+    "perdida_log": 0.5046990304635977,
+    "auc": 0.8326013951923475
+  },
+  "umbral": 0.46,
+  "mejor_epoca": 6,
+  "segundos_carga": 0.4243504,
+  "segundos_entrenamiento": 1.2692572,
+  "columnas_excluidas": [
+    "dias_desde_inicio",
+    "mes_sin",
+    "mes_cos"
+  ],
+  "num_variables": 47,
+  "filas_train": 1199305,
+  "filas_validacion": 149975,
+  "filas_prueba": 149975,
+  "memoria_mb": {
+    "heap_alloc": 1113.5837173461914,
+    "sys": 1275.238525390625
+  }
+}
