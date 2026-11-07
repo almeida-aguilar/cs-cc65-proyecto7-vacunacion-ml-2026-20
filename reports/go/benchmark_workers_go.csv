@@ -1,0 +1,11 @@
+etapa,workers,segundos,speedup
+carga,1,1.682815,1.0000
+carga,2,0.918372,1.8324
+carga,4,0.526377,3.1970
+carga,8,0.359755,4.6777
+carga,16,0.345884,4.8653
+entrenamiento,1,0.891131,1.0000
+entrenamiento,2,0.541510,1.6456
+entrenamiento,4,0.369602,2.4111
+entrenamiento,8,0.311413,2.8616
+entrenamiento,16,0.317853,2.8036
