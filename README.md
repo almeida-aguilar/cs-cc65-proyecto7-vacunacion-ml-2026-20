@@ -6,7 +6,7 @@ Código en `src/`: `00_extraer.py`, `loader_concurrente.py`, `limpieza_comun.py`
 
 ### Datos (no versionados)
 Los archivos de `data/` (CSV original de 10.6 GB, shards, personas, `dataset_entrenamiento.csv`, `scaler.json`, cubos y logs) pesan demasiado para git y están en `.gitignore`. Las evidencias que sí se versionan son el informe, las tablas, las figuras y las métricas de `reports/`.
-- **Por ahora:** `dataset_entrenamiento.csv` (255 MB), `scaler.json`, `tabla_ruralidad.csv` y `muestra_legible.parquet` se comparten por Google Drive: _(pegar enlace aquí)_. Copiarlos en `data/` antes de ejecutar el resto del proyecto.
+- **Por ahora:** `dataset_entrenamiento.csv` (255 MB), `scaler.json`, `tabla_ruralidad.csv` y `muestra_legible.parquet` se comparten por Google Drive: [PC3_DATASET](https://drive.google.com/drive/folders/1JS8f9BwNJ82sttCVNhI6D_9udcTBqDpc?usp=sharing). Copiarlos en `data/` antes de ejecutar el resto del proyecto.
 - **A evaluar:** cargarlos en MongoDB (ya previsto en la Parte C) o en un volumen de Docker para que el cargador en Go los lea sin depender del Drive.
 
 
