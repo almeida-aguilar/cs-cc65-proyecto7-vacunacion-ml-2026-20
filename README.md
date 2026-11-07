@@ -107,12 +107,61 @@ go test ./...
 - `benchmark_workers_go.csv` (`cmd/benchmark`): `etapa,workers,segundos,speedup` para las etapas `carga` y `entrenamiento`.
 
 ### Notas importantes
-- Entrenar con 1,2 millones de filas usa del orden de **1,5 a 2 GB de RAM**.
+- Entrenar con 1,2 millones de filas usa unos **1,4 GB** (medido: 1,19 GB de heap y 1,38 GB de memoria del sistema).
 - Con datos simulados o de prueba, usa siempre `-nombre prueba` en `cmd/entrenar` y `-salida reports/go/prueba_benchmark.csv` en `cmd/benchmark`: los archivos `reports/go/prueba*` están ignorados por git y así no se suben por error resultados que no son reales.
 - `valid_raw.csv` se divide en dos mitades: la **validación** se usa para la parada temprana y para elegir el umbral, y las **métricas finales** se miden en la mitad de **prueba**, que no se usó para decidir nada.
 - Si el AUC en prueba pasa de 0,95, el programa avisa de una posible fuga de datos.
 
 ### Resultados
-- Modelo completo (métricas en prueba, umbral, mejor época): Pendiente: se completa con las corridas sobre los datos reales.
-- Comparación sin variables de cohorte (revisión de fuga de datos): Pendiente: se completa con las corridas sobre los datos reales.
-- Benchmark de paralelización (tiempos y speedup): Pendiente: se completa con las corridas sobre los datos reales.
+Corridas con los datos reales: 1.199.305 filas de entrenamiento y 149.975 filas en cada mitad de `valid` (validación y prueba). Máquina: 16 CPUs, Windows, Go 1.27.1. Los archivos de origen están en `reports/go/`. Las métricas son sobre la **muestra del dataset**, donde la población rural está sobrerrepresentada, así que no deben leerse como el desempeño sobre toda la población.
+
+#### (a) Modelo completo (50 variables)
+Métricas en la mitad de **prueba** (datos no usados para elegir nada), con umbral 0,48 elegido en validación. Fuente: `completo_metricas.json` y `completo_historial.csv`.
+
+| Métrica | Valor |
+|---|---|
+| AUC | 0,878 |
+| Sensibilidad | 0,814 |
+| Precisión | 0,236 |
+| Especificidad | 0,788 |
+| F1 | 0,366 |
+
+- La mejor época fue la 5 y el entrenamiento se detuvo en la 8 por la parada temprana (paciencia 3).
+- Solo cerca del 7,5 % de las personas deserta, por eso la precisión es baja aunque la sensibilidad sea alta: el umbral se eligió para detectar al menos el 80 % de los que desertan, y eso trae muchos falsos positivos.
+- Los resultados en validación y en prueba son parecidos (AUC 0,875 y 0,878), así que no se ve sobreajuste a la mitad de validación.
+
+#### (b) Con y sin variables de cohorte
+Revisión de fuga de datos: se quitan `dias_desde_inicio`, `mes_sin` y `mes_cos` (47 variables). Métricas en **prueba**. Fuente: `completo_metricas.json` y `sin_cohorte_metricas.json`.
+
+| Métrica | Completo (50 variables) | Sin cohorte (47 variables) |
+|---|---|---|
+| AUC | 0,878 | 0,833 |
+| Sensibilidad | 0,814 | 0,809 |
+| Precisión | 0,236 | 0,182 |
+| F1 | 0,366 | 0,297 |
+| Umbral | 0,48 | 0,46 |
+| Mejor época | 5 | 6 |
+
+- Sin las variables de cohorte el AUC baja de 0,878 a 0,833 y la precisión de 0,236 a 0,182: esas variables aportan información útil.
+- En el modelo completo, `dias_desde_inicio` es la variable con más peso, por mucho margen sobre las demás. Quitar las tres variables de cohorte baja el AUC de 0,878 a 0,833, pero el modelo sigue siendo útil, y el AUC del modelo completo está lejos de 0,95, el valor a partir del cual el programa avisa de posible fuga. Es decir, las variables de cohorte aportan señal real, aunque dependen del momento de la campaña (corte de datos) y no se generalizarían a otra campaña.
+- La sensibilidad es casi igual en los dos porque el umbral se elige para cumplir una sensibilidad mínima de 0,8.
+
+#### (c) Benchmark de paralelización
+Mediana de 3 repeticiones por cantidad de workers. Speedup = tiempo con 1 worker / tiempo con N workers. Fuente: `benchmark_workers_go.csv`.
+
+| Etapa | Workers | Tiempo (s) | Speedup |
+|---|---|---|---|
+| carga | 1 | 1,683 | 1,00x |
+| carga | 2 | 0,918 | 1,83x |
+| carga | 4 | 0,526 | 3,20x |
+| carga | 8 | 0,360 | 4,68x |
+| carga | 16 | 0,346 | 4,87x |
+| entrenamiento | 1 | 0,891 | 1,00x |
+| entrenamiento | 2 | 0,542 | 1,65x |
+| entrenamiento | 4 | 0,370 | 2,41x |
+| entrenamiento | 8 | 0,311 | 2,86x |
+| entrenamiento | 16 | 0,318 | 2,80x |
+
+- La pérdida final del entrenamiento fue la misma con todas las cantidades de workers (diferencia relativa de 5,8e-14), así que el resultado no depende del número de goroutines.
+- El speedup no es lineal por la ley de Amdahl: una parte del trabajo sigue siendo secuencial. En la carga, un solo productor lee el archivo del disco; en el entrenamiento, hay que sumar los gradientes de todos los workers antes de actualizar los pesos.
+- A partir de 8 workers casi no hay mejora (carga 4,68x a 4,87x; entrenamiento 2,86x a 2,80x): la parte secuencial domina y el costo de coordinar más goroutines compensa lo que se gana.
