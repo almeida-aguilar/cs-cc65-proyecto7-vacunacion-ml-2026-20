@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"time"
 
@@ -33,13 +34,14 @@ type medicion struct {
 	nodos        int
 	filas        int
 	epocas       int
+	workersNodo  int
 	perdidaFinal float64
 	segundos     float64
 }
 
 // levantarNodos crea un nodo por fragmento, cada uno con su listener en un
 // puerto local libre. Devuelve las direcciones y una función que los detiene.
-func levantarNodos(fragmentos []*logreg.Dataset) ([]string, func(), error) {
+func levantarNodos(fragmentos []*logreg.Dataset, workersNodo int) ([]string, func(), error) {
 	var nodos []*logreg.Nodo
 	detener := func() {
 		for _, nodo := range nodos {
@@ -48,7 +50,7 @@ func levantarNodos(fragmentos []*logreg.Dataset) ([]string, func(), error) {
 	}
 	var direcciones []string
 	for indice, fragmento := range fragmentos {
-		nodo, err := logreg.NuevoNodo(fmt.Sprintf("nodo-%d", indice+1), fragmento, 0)
+		nodo, err := logreg.NuevoNodo(fmt.Sprintf("nodo-%d", indice+1), fragmento, workersNodo)
 		if err != nil {
 			detener()
 			return nil, nil, fmt.Errorf("no se pudo crear el nodo %d: %w", indice+1, err)
@@ -68,8 +70,8 @@ func levantarNodos(fragmentos []*logreg.Dataset) ([]string, func(), error) {
 
 // entrenarConNodos reparte una copia de los datos entre k nodos, entrena de
 // forma distribuida y devuelve la pérdida final y los segundos de entrenamiento.
-func entrenarConNodos(datos *logreg.Dataset, k, epocas int) (float64, float64, error) {
-	direcciones, detener, err := levantarNodos(datos.Copiar().Particionar(k))
+func entrenarConNodos(datos *logreg.Dataset, k, epocas, workersNodo int) (float64, float64, error) {
+	direcciones, detener, err := levantarNodos(datos.Copiar().Particionar(k), workersNodo)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -110,13 +112,13 @@ func entrenarConNodos(datos *logreg.Dataset, k, epocas int) (float64, float64, e
 
 // medirEscalamiento entrena con cada cantidad de nodos y usa la mediana de los
 // tiempos de varias repeticiones. La pérdida se toma de la última repetición.
-func medirEscalamiento(datos *logreg.Dataset, listaNodos []int, epocas, repeticiones int) ([]medicion, error) {
+func medirEscalamiento(datos *logreg.Dataset, listaNodos []int, epocas, repeticiones, workersNodo int) ([]medicion, error) {
 	var mediciones []medicion
 	for _, k := range listaNodos {
 		var tiempos []float64
 		var perdida float64
 		for rep := 0; rep < repeticiones; rep++ {
-			p, segundos, err := entrenarConNodos(datos, k, epocas)
+			p, segundos, err := entrenarConNodos(datos, k, epocas, workersNodo)
 			if err != nil {
 				return nil, err
 			}
@@ -128,6 +130,7 @@ func medirEscalamiento(datos *logreg.Dataset, listaNodos []int, epocas, repetici
 			nodos:        k,
 			filas:        datos.Len(),
 			epocas:       epocas,
+			workersNodo:  workersNodo,
 			perdidaFinal: perdida,
 			segundos:     tiempos[len(tiempos)/2],
 		})
@@ -163,9 +166,9 @@ func escribirCSV(ruta string, mediciones []medicion) error {
 	if err != nil {
 		return fmt.Errorf("no se pudo crear %s: %w", ruta, err)
 	}
-	fmt.Fprintln(archivo, "nodos,filas,epocas,perdida_final,segundos")
+	fmt.Fprintln(archivo, "nodos,workers_nodo,filas,epocas,perdida_final,segundos")
 	for _, m := range mediciones {
-		fmt.Fprintf(archivo, "%d,%d,%d,%.12f,%.4f\n", m.nodos, m.filas, m.epocas, m.perdidaFinal, m.segundos)
+		fmt.Fprintf(archivo, "%d,%d,%d,%d,%.12f,%.4f\n", m.nodos, m.workersNodo, m.filas, m.epocas, m.perdidaFinal, m.segundos)
 	}
 	return archivo.Close()
 }
@@ -173,13 +176,14 @@ func escribirCSV(ruta string, mediciones []medicion) error {
 func main() {
 	csv := flag.String("csv", "data/modelo/train_raw.csv", "CSV numérico con la etiqueta deserto en la última columna")
 	maxFilas := flag.Int("max-filas", 0, "limita las filas leídas (0 = todas)")
+	workersNodo := flag.Int("workers-nodo", 0, "goroutines de cada nodo para el gradiente local (0 = todos los núcleos)")
 	epocas := flag.Int("epocas", 30, "épocas fijas del entrenamiento")
 	repeticiones := flag.Int("repeticiones", 3, "repeticiones por cantidad de nodos (se usa la mediana)")
 	salida := flag.String("salida", "reports/pc4/escalamiento_cluster.csv", "CSV con la tabla de resultados (para pruebas usa prefijo prueba)")
 	flag.Parse()
 
-	if *repeticiones < 1 || *epocas < 1 {
-		fmt.Println("Error: -repeticiones y -epocas deben ser al menos 1")
+	if *repeticiones < 1 || *epocas < 1 || *workersNodo < 0 {
+		fmt.Println("Error: -repeticiones y -epocas deben ser al menos 1 y -workers-nodo no puede ser negativo")
 		os.Exit(1)
 	}
 
@@ -191,15 +195,16 @@ func main() {
 	fmt.Printf("Datos: %d filas válidas, %d rechazadas, %d variables\n",
 		resumen.FilasValidas, resumen.FilasRechazadas, len(columnas))
 
-	mediciones, err := medirEscalamiento(datos, []int{1, 2, 4}, *epocas, *repeticiones)
+	mediciones, err := medirEscalamiento(datos, []int{1, 2, 4}, *epocas, *repeticiones, *workersNodo)
 	if err != nil {
 		fmt.Println("Error en la medición:", err)
 		os.Exit(1)
 	}
 
-	fmt.Println("nodos | filas | épocas | pérdida final   | segundos")
+	fmt.Printf("Workers por nodo: %d (0 = todos los núcleos, %d disponibles)\n", *workersNodo, runtime.NumCPU())
+	fmt.Println("nodos | workers_nodo | filas | épocas | pérdida final   | segundos")
 	for _, m := range mediciones {
-		fmt.Printf("%5d | %5d | %6d | %.12f | %.4f\n", m.nodos, m.filas, m.epocas, m.perdidaFinal, m.segundos)
+		fmt.Printf("%5d | %12d | %5d | %6d | %.12f | %.4f\n", m.nodos, m.workersNodo, m.filas, m.epocas, m.perdidaFinal, m.segundos)
 	}
 
 	diferencia, errVerificacion := verificarPerdidas(mediciones)

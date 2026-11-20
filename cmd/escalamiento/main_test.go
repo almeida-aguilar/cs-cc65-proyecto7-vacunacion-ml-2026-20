@@ -43,23 +43,28 @@ func TestEscalamientoMismaPerdida(t *testing.T) {
 		t.Fatalf("CargarCSV: %v", err)
 	}
 
-	mediciones, err := medirEscalamiento(datos, []int{1, 2, 4}, 4, 1)
-	if err != nil {
-		t.Fatalf("medirEscalamiento: %v", err)
-	}
-	if len(mediciones) != 3 {
-		t.Fatalf("se esperaban 3 mediciones, hay %d", len(mediciones))
-	}
-	for indice, k := range []int{1, 2, 4} {
-		if mediciones[indice].nodos != k || mediciones[indice].filas != datos.Len() || mediciones[indice].epocas != 4 {
-			t.Errorf("medición %d inesperada: %+v", indice, mediciones[indice])
+	// 0 = todos los núcleos por nodo; 1 = un núcleo por nodo.
+	for _, workersNodo := range []int{0, 1} {
+		mediciones, err := medirEscalamiento(datos, []int{1, 2, 4}, 4, 1, workersNodo)
+		if err != nil {
+			t.Fatalf("medirEscalamiento con %d workers por nodo: %v", workersNodo, err)
 		}
-		if mediciones[indice].segundos <= 0 {
-			t.Errorf("los segundos con %d nodos deben ser positivos", k)
+		if len(mediciones) != 3 {
+			t.Fatalf("se esperaban 3 mediciones, hay %d", len(mediciones))
 		}
-	}
-	if diferencia, err := verificarPerdidas(mediciones); err != nil {
-		t.Errorf("la pérdida debe coincidir entre 1, 2 y 4 nodos: %v (diferencia %.2e)", err, diferencia)
+		for indice, k := range []int{1, 2, 4} {
+			m := mediciones[indice]
+			if m.nodos != k || m.workersNodo != workersNodo || m.filas != datos.Len() || m.epocas != 4 {
+				t.Errorf("medición %d inesperada: %+v", indice, m)
+			}
+			if m.segundos <= 0 {
+				t.Errorf("los segundos con %d nodos deben ser positivos", k)
+			}
+		}
+		if diferencia, err := verificarPerdidas(mediciones); err != nil {
+			t.Errorf("la pérdida debe coincidir entre 1, 2 y 4 nodos con %d workers por nodo: %v (diferencia %.2e)",
+				workersNodo, err, diferencia)
+		}
 	}
 }
 
@@ -75,7 +80,7 @@ func TestVerificarPerdidasDetectaDiferencia(t *testing.T) {
 
 func TestEscribirCSV(t *testing.T) {
 	ruta := filepath.Join(t.TempDir(), "sub", "prueba_escalamiento.csv")
-	err := escribirCSV(ruta, []medicion{{nodos: 2, filas: 100, epocas: 5, perdidaFinal: 0.25, segundos: 1.5}})
+	err := escribirCSV(ruta, []medicion{{nodos: 2, workersNodo: 1, filas: 100, epocas: 5, perdidaFinal: 0.25, segundos: 1.5}})
 	if err != nil {
 		t.Fatalf("escribirCSV: %v", err)
 	}
@@ -83,7 +88,7 @@ func TestEscribirCSV(t *testing.T) {
 	if err != nil {
 		t.Fatalf("no se pudo leer el CSV: %v", err)
 	}
-	esperado := "nodos,filas,epocas,perdida_final,segundos\n2,100,5,0.250000000000,1.5000\n"
+	esperado := "nodos,workers_nodo,filas,epocas,perdida_final,segundos\n2,1,100,5,0.250000000000,1.5000\n"
 	if string(contenido) != esperado {
 		t.Errorf("contenido = %q, se esperaba %q", contenido, esperado)
 	}
