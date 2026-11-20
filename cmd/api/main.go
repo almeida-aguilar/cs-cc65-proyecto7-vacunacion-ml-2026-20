@@ -24,13 +24,31 @@ type opciones struct {
 	direccion, modelo, nodos, mongo, base string
 }
 
+// entorno devuelve la variable de entorno o, si está vacía, el valor por defecto.
+// Docker Compose configura la API con variables (docker-compose.yml); los flags
+// tienen prioridad sobre ellas.
+func entorno(nombre, porDefecto string) string {
+	if valor := os.Getenv(nombre); valor != "" {
+		return valor
+	}
+	return porDefecto
+}
+
+// direccionDeEscucha usa PUERTO_API (solo el número) cuando está definida.
+func direccionDeEscucha() string {
+	if puerto := os.Getenv("PUERTO_API"); puerto != "" {
+		return ":" + puerto
+	}
+	return ":8080"
+}
+
 func leerOpciones() opciones {
 	var o opciones
-	flag.StringVar(&o.direccion, "addr", ":8080", "dirección donde escucha la API")
-	flag.StringVar(&o.modelo, "modelo", "modelo.json", "archivo del modelo (se carga al iniciar y se reescribe al entrenar)")
-	flag.StringVar(&o.nodos, "nodos", "", "direcciones TCP de los nodos ML, separadas por comas (ej. nodo1:9001,nodo2:9001)")
-	flag.StringVar(&o.mongo, "mongo", "", "URI de MongoDB (vacío = repositorio en memoria, sin persistencia)")
-	flag.StringVar(&o.base, "base", "vacunas", "nombre de la base de datos de MongoDB")
+	flag.StringVar(&o.direccion, "addr", direccionDeEscucha(), "dirección donde escucha la API (env PUERTO_API)")
+	flag.StringVar(&o.modelo, "modelo", entorno("MODELO", "modelo.json"), "archivo del modelo, se carga al iniciar y se reescribe al entrenar (env MODELO)")
+	flag.StringVar(&o.nodos, "nodos", entorno("NODOS", ""), "direcciones TCP de los nodos ML, separadas por comas (env NODOS, ej. nodo1:9001,nodo2:9001)")
+	flag.StringVar(&o.mongo, "mongo", entorno("MONGO_URI", ""), "URI de MongoDB; vacío = repositorio en memoria (env MONGO_URI)")
+	flag.StringVar(&o.base, "base", entorno("MONGO_BASE", "vacunas"), "nombre de la base de datos de MongoDB (env MONGO_BASE)")
 	flag.Parse()
 	return o
 }
