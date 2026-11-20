@@ -1,0 +1,18 @@
+# Datos pesados y artefactos: nunca van a la imagen (se montan como volúmenes)
+data/
+.venv/
+.git/
+.github/
+reports/figuras
+*.csv
+*.parquet
+*.7z
+*.zip
+modelo*.json
+.env
+# Binarios y cachés
+bin/
+*.exe
+*.test
+__pycache__/
+*.pyc

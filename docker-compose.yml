@@ -1,0 +1,149 @@
+# Clúster ML de vacunación (PC4). Los valores salen de .env (copia .env.example).
+# Levantar:   docker compose up -d
+# Entrenar:   docker compose --profile entrenamiento run --rm coordinador
+# API:        docker compose --profile api up -d   (cuando exista cmd/api)
+
+name: vacunas-ml
+
+x-imagen-ml: &imagen-ml
+  build: .
+  image: vacunas-ml:local
+
+services:
+  mongo:
+    image: mongo:7
+    # Sin container_name: "mise run db:up" usa el nombre vacunas-mongo.
+    volumes:
+      - mongo-datos:/data/db
+    ports:
+      - "${MONGO_PUERTO_HOST:-27018}:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks: [cluster-ml]
+
+  seed:
+    <<: *imagen-ml
+    command: ["/app/bin/seed", "-mongo", "${MONGO_URI:-mongodb://mongo:27017}", "-base", "${MONGO_BASE:-vacunas_prueba}"]
+    restart: "no"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - ./reports/go:/app/reports/go:ro
+    networks: [cluster-ml]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-datos:/data
+    ports:
+      - "${REDIS_PUERTO_HOST:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [cluster-ml]
+
+  nodo1:
+    <<: *imagen-ml
+    command: ["/app/bin/nodo", "-servidor", ":9001", "-nodo", "nodo-1", "-csv", "/datos/nodo1.csv"]
+    volumes:
+      - ./data/prueba:/datos:ro
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9001"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [cluster-ml]
+
+  nodo2:
+    <<: *imagen-ml
+    command: ["/app/bin/nodo", "-servidor", ":9001", "-nodo", "nodo-2", "-csv", "/datos/nodo2.csv"]
+    volumes:
+      - ./data/prueba:/datos:ro
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9001"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [cluster-ml]
+
+  coordinador:
+    <<: *imagen-ml
+    profiles: ["entrenamiento"]
+    command:
+      - /app/bin/coordinador
+      - -nodos
+      - ${NODOS:-nodo1:9001,nodo2:9001}
+      - -epocas
+      - "${EPOCAS:-10}"
+      - -lote
+      - "${LOTE:-1024}"
+      - -peso-positivo
+      - "${PESO_POSITIVO:-12.43}"
+      - -nombre
+      - docker
+      - -reportes
+      - /app/reports/pc4
+      - -salida
+      - /app/reports/pc4/modelo_docker.json
+    restart: "no"
+    depends_on:
+      nodo1:
+        condition: service_healthy
+      nodo2:
+        condition: service_healthy
+    volumes:
+      - ./reports/pc4:/app/reports/pc4
+    networks: [cluster-ml]
+
+  # Nombres provisionales: ajustar al fusionar #29/#31 (la API aún no existe).
+  api:
+    <<: *imagen-ml
+    profiles: ["api"]
+    command: ["/app/bin/api"]
+    ports:
+      - "${PUERTO_API:-8080}:8080"
+    environment:
+      PUERTO_API: "8080"
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017}
+      MONGO_BASE: ${MONGO_BASE:-vacunas_prueba}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_TTL: ${REDIS_TTL:-300s}
+      NODOS: ${NODOS:-nodo1:9001,nodo2:9001}
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nodo1:
+        condition: service_healthy
+      nodo2:
+        condition: service_healthy
+    networks: [cluster-ml]
+
+  # spa: reservada para el entregable 3 (TB2); no se implementa en PC4.
+  # spa:
+  #   build: ./spa
+  #   profiles: ["spa"]
+  #   ports:
+  #     - "3000:80"
+  #   depends_on:
+  #     - api
+  #   networks: [cluster-ml]
+
+networks:
+  cluster-ml:
+    driver: bridge
+
+volumes:
+  mongo-datos:
+  redis-datos:
