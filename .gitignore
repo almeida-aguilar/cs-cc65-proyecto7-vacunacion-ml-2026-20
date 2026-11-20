@@ -25,3 +25,6 @@ reports/go/prueba*
 .mise/
 mise.local.toml
 mise.local.lock
+
+# Docker Compose: variables locales
+.env
