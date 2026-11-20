@@ -174,3 +174,26 @@ run = "docker rm -f vacunas-mongo"
 description = "Inserta registros de prueba en MongoDB (acepta los flags de cmd/seed)"
 raw_args = true
 run = "go run ./cmd/seed"
+
+# ---------------------------------------------------------------------------
+# Evidencias (PC4)
+# ---------------------------------------------------------------------------
+
+[tasks."data:prueba"]
+description = "Genera data/prueba/nodo1.csv, nodo2.csv y predicciones.json (acepta --filas, --fragmentos)"
+raw_args = true
+run = "python src/generar_datos_prueba.py"
+
+[tasks."pc4:escalamiento"]
+description = "Entrena con 1, 2 y 4 nodos TCP locales y guarda reports/pc4/escalamiento_cluster.csv (acepta los flags de cmd/escalamiento)"
+raw_args = true
+run = "go run ./cmd/escalamiento"
+
+[tasks."pc4:latencia"]
+description = "Mide la latencia de /predict (API levantada) y guarda reports/pc4/latencia_*.{csv,json} (acepta los flags de cmd/latencia)"
+raw_args = true
+run = "go run ./cmd/latencia"
+
+[tasks."pc4:race"]
+description = "Ejecuta go test -race -count=1 -v ./... y guarda la salida en reports/pc4/race_test.txt"
+run = "python src/ejecutar_race.py"
