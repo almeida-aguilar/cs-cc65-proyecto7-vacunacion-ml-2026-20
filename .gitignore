@@ -16,6 +16,8 @@ modelo.json
 modelo_*.json
 # Los reportes de Go (CSV pequeños) sí se versionan
 !reports/go/*.csv
+# Evidencias del PC4 (CSV pequeños) sí se versionan
+!reports/pc4/*.csv
 
 # Corridas con datos simulados
 reports/go/prueba*

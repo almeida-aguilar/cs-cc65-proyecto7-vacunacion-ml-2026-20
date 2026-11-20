@@ -174,3 +174,21 @@ run = "docker rm -f vacunas-mongo"
 description = "Inserta registros de prueba en MongoDB (acepta los flags de cmd/seed)"
 raw_args = true
 run = "go run ./cmd/seed"
+
+# ---------------------------------------------------------------------------
+# API (PC4)
+# ---------------------------------------------------------------------------
+
+[tasks.api]
+description = "Levanta la API en :8080 (acepta flags de cmd/api, p. ej. -nodos a:9001,b:9002 -mongo mongodb://localhost:27017)"
+raw_args = true
+run = "go run ./cmd/api"
+
+[tasks."test:api"]
+description = "Pruebas de la API: endpoints, WebSocket y entrenamiento con 2 nodos TCP (-race)"
+run = "go test -race -count=1 ./internal/api/..."
+
+[tasks.latencia]
+description = "Mide la latencia de POST /predict (API en marcha) y escribe reports/pc4/latencia_api.csv"
+raw_args = true
+run = "go run ./cmd/latencia"
