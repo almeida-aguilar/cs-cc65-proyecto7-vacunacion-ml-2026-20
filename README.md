@@ -30,7 +30,7 @@ Tareas principales:
 | `mise run train:prueba` / `mise run bench:prueba` | Corridas cortas con prefijos seguros para no sobrescribir reportes reales |
 | `mise run reportes` | Regenera el benchmark de Go, su figura y el EDA (pesado) |
 | `mise run data:prueba` | Crea `data/prueba/nodo1.csv`, `nodo2.csv` y `predicciones.json` (reales o sintéticos) |
-| `mise run pc4:escalamiento` | Entrena con 1, 2 y 4 nodos TCP locales y guarda `reports/pc4/escalamiento_cluster.csv` |
+| `mise run pc4:escalamiento` | Entrena con 1, 2 y 4 nodos TCP locales y guarda `reports/pc4/escalamiento_cluster.csv` (flag `-workers-nodo` para limitar los núcleos de cada nodo) |
 | `mise run pc4:latencia` | Mide la latencia de `/predict` (API levantada) y guarda `reports/pc4/latencia_*` |
 | `mise run pc4:race` | `go test -race -count=1 -v ./...` guardado en `reports/pc4/race_test.txt` |
 
