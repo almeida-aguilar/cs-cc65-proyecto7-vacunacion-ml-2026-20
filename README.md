@@ -29,6 +29,14 @@ Tareas principales:
 | `mise run train` / `mise run bench` | Entrenamiento y benchmark; reenvían flags, p. ej. `mise run train -max-filas 10000` |
 | `mise run train:prueba` / `mise run bench:prueba` | Corridas cortas con prefijos seguros para no sobrescribir reportes reales |
 | `mise run reportes` | Regenera el benchmark de Go, su figura y el EDA (pesado) |
+| `mise run data:prueba` | Crea `data/prueba/nodo1.csv`, `nodo2.csv` y `predicciones.json` (reales o sintéticos) |
+| `mise run pc4:escalamiento` | Entrena con 1, 2 y 4 nodos TCP locales y guarda `reports/pc4/escalamiento_cluster.csv` |
+| `mise run pc4:latencia` | Mide la latencia de `/predict` (API levantada) y guarda `reports/pc4/latencia_*` |
+| `mise run pc4:race` | `go test -race -count=1 -v ./...` guardado en `reports/pc4/race_test.txt` |
+
+### Evidencias del PC4
+
+Las tareas `data:prueba`, `pc4:escalamiento`, `pc4:latencia` y `pc4:race` generan las evidencias de `reports/pc4/`; la tabla de archivos, su estado y cómo se produce cada uno está en `reports/pc4/README.md`. Para corridas de prueba usa salidas con prefijo `prueba` (ignoradas por git).
 
 Las tareas de Python también reenvían argumentos: `mise run data:cargar --workers 6 --bloque-mb 32`. Si no usas mise, los comandos equivalentes están en cada sección.
 
