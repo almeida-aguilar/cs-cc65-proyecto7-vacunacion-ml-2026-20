@@ -26,19 +26,29 @@ type respuestaEntrenamiento struct {
 	Nodos  int    `json:"nodos"`
 }
 
+// valorOPor devuelve valor si es positivo y, si no, el de respaldo.
+func valorOPor[T int | float64](valor, respaldo T) T {
+	if valor > 0 {
+		return valor
+	}
+	return respaldo
+}
+
 // valoresPorDefecto completa los hiperparámetros que no se enviaron.
-func (p *peticionEntrenamiento) valoresPorDefecto() {
+func (p *peticionEntrenamiento) valoresPorDefecto(defectos DefectosEntrenamiento) {
 	if p.Epocas == 0 {
-		p.Epocas = 10
+		p.Epocas = valorOPor(defectos.Epocas, 10)
 	}
 	if p.Lote == 0 {
-		p.Lote = 1024
+		p.Lote = valorOPor(defectos.Lote, 1024)
 	}
 	if p.Tasa == 0 {
-		p.Tasa = 0.1
+		p.Tasa = valorOPor(defectos.Tasa, 0.1)
 	}
 	if p.PesoPositivo == 0 {
-		p.PesoPositivo = 1
+		// Sin peso, el modelo casi nunca predice la clase minoritaria (7 % de
+		// deserción): por defecto se usa el mismo peso que en el PC3.
+		p.PesoPositivo = valorOPor(defectos.PesoPositivo, PesoPositivoPC3)
 	}
 	if p.Semilla == 0 {
 		p.Semilla = 42
@@ -55,7 +65,7 @@ func (s *Servidor) entrenar(w http.ResponseWriter, r *http.Request) {
 		fallo(w, http.StatusBadRequest, err.Error(), inicio)
 		return
 	}
-	peticion.valoresPorDefecto()
+	peticion.valoresPorDefecto(s.opciones.Entrenamiento)
 	if peticion.Epocas < 0 || peticion.Lote < 0 || peticion.Tasa < 0 || peticion.PesoPositivo < 0 {
 		fallo(w, http.StatusBadRequest, "los hiperparámetros no pueden ser negativos", inicio)
 		return
@@ -101,11 +111,12 @@ func (s *Servidor) entrenar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// La respuesta se arma antes de lanzar la goroutine: esta modifica la
+	// ejecución y leerla después sería una condición de carrera.
+	aceptada := respuestaEntrenamiento{ID: ejecucion.ID, Estado: ejecucion.Estado, Nodos: ejecucion.Nodos}
 	s.trabajos.Add(1)
 	go s.ejecutarEntrenamiento(servidor, ejecucion)
-	responder(w, http.StatusAccepted, respuestaEntrenamiento{
-		ID: ejecucion.ID, Estado: ejecucion.Estado, Nodos: ejecucion.Nodos,
-	}, inicio)
+	responder(w, http.StatusAccepted, aceptada, inicio)
 }
 
 // ejecutarEntrenamiento corre el parameter server, guarda una métrica por
@@ -168,6 +179,11 @@ func (s *Servidor) ejecutarEntrenamiento(servidor *coordinador.Servidor, ejecuci
 	s.ejecucionModelo = ejecucion.ID
 	s.evaluacion = evaluacion
 	s.mu.Unlock()
+	if pesos, ok := s.opciones.Cache.(CachePesos); ok {
+		if err := pesos.GuardarPesos(s.ctx, resultado.Modelo, ejecucion.ID); err != nil {
+			s.log("no se pudieron guardar los pesos en la caché: %v", err)
+		}
+	}
 	if s.opciones.RutaModelo != "" {
 		if err := resultado.Modelo.Guardar(s.opciones.RutaModelo); err != nil {
 			s.log("no se pudo guardar el modelo en %s: %v", s.opciones.RutaModelo, err)

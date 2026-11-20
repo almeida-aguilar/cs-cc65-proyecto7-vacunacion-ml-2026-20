@@ -23,7 +23,8 @@ flowchart LR
     H -->|RLock, solo lectura| M[(Modelo en memoria)]
     H -->|canal con búfer| Q[cola de predicciones]
     Q --> W[goroutine de persistencia] --> DB[(MongoDB)]
-    W -.-> R[(Redis, #31)]
+    W -.-> R[(Redis)]
+    H -.->|consulta antes de calcular| R
     H -->|POST /train| T[goroutine de entrenamiento]
     T -->|TCP| N[Nodos ML]
     T -->|AlProgreso| HUB[hub]
@@ -37,7 +38,7 @@ flowchart LR
 - **Un entrenamiento a la vez:** `atomic.Bool` con `CompareAndSwap`. El entrenamiento corre en su propia goroutine y usa `internal/coordinador` (parameter server por TCP).
 - **WebSocket:** un hub con un canal con búfer por cliente; si un cliente es lento se le descarta el evento en vez de bloquear a quien publica. Una sola goroutine escribe por conexión (requisito de `gorilla/websocket`).
 - **Cierre ordenado:** `http.Server.Shutdown`, luego `Servidor.Cerrar()` (cancela, vacía la cola y espera a las goroutines).
-- **Redis (#31):** la interfaz `api.Cache` ya está conectada a `/predict`; solo falta una implementación.
+- **Redis (#31):** `internal/cache` implementa `api.Cache`: `/predict` consulta Redis, luego MongoDB (`origen` `cache`/`mongo`/`calculo`) y guarda los pesos del modelo. Ver [redis.md](redis.md).
 - **JWT:** no se implementa en el PC4 (el enunciado lo marca como opcional). Se hará con el inicio de sesión de la SPA en el entregable 3.
 
 ## Ejecutar

@@ -188,6 +188,10 @@ run = "go run ./cmd/api"
 description = "Pruebas de la API: endpoints, WebSocket y entrenamiento con 2 nodos TCP (-race)"
 run = "go test -race -count=1 ./internal/api/..."
 
+[tasks."test:cache"]
+description = "Pruebas de la caché Redis (miniredis; con REDIS_URL usa un Redis real) (-race)"
+run = "go test -race -count=1 ./internal/cache/..."
+
 # ---------------------------------------------------------------------------
 # Evidencias (PC4)
 # ---------------------------------------------------------------------------
