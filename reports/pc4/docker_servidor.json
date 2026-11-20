@@ -1,0 +1,36 @@
+{
+  "nodos_activos": 2,
+  "filas_totales": 20000,
+  "configuracion": {
+    "tasa_aprendizaje": 0.1,
+    "decaimiento": 0,
+    "epocas": 10,
+    "tamano_lote": 1024,
+    "workers": 0,
+    "l2": 0,
+    "peso_clase_positiva": 1,
+    "semilla": 42,
+    "tolerancia": 0.000001,
+    "paciencia": 0,
+    "mejora_minima": 0
+  },
+  "metricas": {
+    "matriz": {
+      "vp": 287,
+      "fp": 171,
+      "vn": 18336,
+      "fn": 1206
+    },
+    "n": 20000,
+    "umbral": 0.5,
+    "exactitud": 0.93115,
+    "precision": 0.6266375545851528,
+    "sensibilidad": 0.19223040857334225,
+    "especificidad": 0.9907602528772896,
+    "f1": 0.2942080984110712,
+    "perdida_log": 0.239652518806329,
+    "auc": 0
+  },
+  "mejor_epoca": 0,
+  "segundos_entrenamiento": 0.065521977
+}
