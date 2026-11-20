@@ -22,8 +22,12 @@ El trabajo está dividido en dos partes que se encadenan:
 De la arquitectura "de destino" descrita en
 `docs/resumen_del_proyecto_y_preprocesamiento.md`, el **parameter server por TCP
 sí está implementado** en `internal/coordinador` y `cmd/coordinador` (PC4, ver
-`docs/protocolo_pc4.md`). La API REST/WebSocket está implementada en `internal/api` y `cmd/api`. MongoDB está implementado como repositorio (`internal/almacen`, ver `docs/base_de_datos.md`). Docker Compose, Redis y la SPA **todavía no
-están implementados**; no los des como existentes. La documentación vigente de la Parte A es
+`docs/protocolo_pc4.md`). La API REST/WebSocket está implementada en `internal/api` y `cmd/api`
+(ver `docs/api.md`). MongoDB está implementado como repositorio (`internal/almacen`, ver
+`docs/base_de_datos.md`). Docker Compose existe (`Dockerfile`, `docker-compose.yml`,
+`docs/docker_pc4.md`: Mongo, Redis y 2 nodos ML; la API se levanta con el perfil `api`). El servicio
+Redis ya está en Compose, pero la caché (#31) y la SPA **todavía no están implementadas**; no las des
+como existentes. La documentación vigente de la Parte A es
 `reports/informe_limpieza_y_analisis.md`; el resumen con la muestra por filas
 quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
 
@@ -60,7 +64,8 @@ quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
 | `src/analisis_eda.py`, `src/exploracion/` | Tablas/figuras del EDA. |
 | `internal/cargador/` | Cargador concurrente de CSV en Go + tests. |
 | `internal/api/` | API HTTP: `/health`, `/predict`, `/train`, `/metrics`, `/docs`, `/ws` + tests (ver `docs/api.md`). |
-| `cmd/api/`, `cmd/latencia/` | Ejecutable de la API y medidor de latencia de `/predict`. |
+| `cmd/api/` | Ejecutable de la API (flags o variables de entorno `NODOS`, `MONGO_URI`, `MONGO_BASE`, `PUERTO_API`, `MODELO`). |
+| `cmd/latencia/`, `cmd/escalamiento/` | Evidencias PC4: latencia de `/predict` y escalamiento con 1, 2 y 4 nodos (ver `reports/pc4/README.md`). |
 | `internal/almacen/` | Entidades y repositorio de datos (MongoDB y memoria) + tests. |
 | `cmd/seed/` | Inserta registros de prueba en MongoDB. |
 | `internal/coordinador/` | Parameter server del clúster ML + tests con 2 nodos TCP. |
@@ -68,6 +73,7 @@ quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
 | `cmd/benchmark/` | Mide carga y entrenamiento con 1, 2, 4, 8 y todos los núcleos. |
 | `cmd/coordinador/` | Entrena distribuido y guarda modelo + reporte del servidor. |
 | `cmd/nodo/` | Worker ML: sirve un fragmento del CSV por TCP al coordinador. |
+| `Dockerfile`, `docker-compose.yml` | Imagen única y clúster Compose (mongo, seed, redis, nodo1/2, coordinador, api reservada); `.env.example`. |
 | `reports/` | Informes, métricas, figuras y reportes de Go versionados. |
 | `docs/` | Resumen del caso, preprocesamiento, plan PC4 y protocolo TCP. |
 

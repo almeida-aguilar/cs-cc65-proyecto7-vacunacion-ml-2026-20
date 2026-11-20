@@ -21,9 +21,13 @@ modelo_*.json
 
 # Corridas con datos simulados
 reports/go/prueba*
+reports/pc4/prueba*
 
 # mise (gestor de herramientas y orquestador)
 .venv/
 .mise/
 mise.local.toml
 mise.local.lock
+
+# Docker Compose: variables locales
+.env

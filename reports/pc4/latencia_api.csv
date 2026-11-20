@@ -1,2 +1,0 @@
-endpoint,peticiones,variables,mediana_ms,p95_ms,maxima_ms,cumple_100ms
-POST /predict,200,50,0.000,0.546,1.066,true

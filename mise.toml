@@ -188,7 +188,58 @@ run = "go run ./cmd/api"
 description = "Pruebas de la API: endpoints, WebSocket y entrenamiento con 2 nodos TCP (-race)"
 run = "go test -race -count=1 ./internal/api/..."
 
-[tasks.latencia]
-description = "Mide la latencia de POST /predict (API en marcha) y escribe reports/pc4/latencia_api.csv"
+# ---------------------------------------------------------------------------
+# Evidencias (PC4)
+# ---------------------------------------------------------------------------
+
+[tasks."data:prueba"]
+description = "Genera data/prueba/nodo1.csv, nodo2.csv y predicciones.json (acepta --filas, --fragmentos)"
+raw_args = true
+run = "python src/generar_datos_prueba.py"
+
+[tasks."pc4:escalamiento"]
+description = "Entrena con 1, 2 y 4 nodos TCP locales y guarda reports/pc4/escalamiento_cluster.csv (acepta los flags de cmd/escalamiento)"
+raw_args = true
+run = "go run ./cmd/escalamiento"
+
+[tasks."pc4:latencia"]
+description = "Mide la latencia de /predict (API levantada) y guarda reports/pc4/latencia_*.{csv,json} (acepta los flags de cmd/latencia)"
 raw_args = true
 run = "go run ./cmd/latencia"
+
+[tasks."pc4:race"]
+description = "Ejecuta go test -race -count=1 -v ./... y guarda la salida en reports/pc4/race_test.txt"
+run = "python src/ejecutar_race.py"
+
+# ---------------------------------------------------------------------------
+# Docker (PC4): clúster completo con Docker Compose
+# ---------------------------------------------------------------------------
+
+[tasks."docker:build"]
+description = "Construye la imagen única del clúster (nodos, coordinador, seed)"
+run = "docker compose build"
+
+[tasks."docker:up"]
+description = "Levanta MongoDB (con semilla), Redis y 2 nodos ML en segundo plano"
+run = "docker compose up -d"
+
+[tasks."docker:ps"]
+description = "Muestra el estado de los servicios de Compose"
+run = "docker compose ps -a"
+
+[tasks."docker:logs"]
+description = "Muestra los logs de Compose (acepta servicios, ej. nodo1)"
+raw_args = true
+run = "docker compose logs"
+
+[tasks."docker:entrenar"]
+description = "Entrena distribuido contra los nodos de Docker (reports/pc4/docker_*)"
+run = "docker compose --profile entrenamiento run --rm coordinador"
+
+[tasks."docker:mongo"]
+description = "Abre mongosh dentro del contenedor, base vacunas_prueba"
+run = "docker compose exec mongo mongosh vacunas_prueba"
+
+[tasks."docker:down"]
+description = "Detiene y elimina los contenedores de Compose (los volúmenes se conservan)"
+run = "docker compose --profile entrenamiento --profile api down"

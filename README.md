@@ -22,16 +22,24 @@ Tareas principales:
 | `mise run test:go` | Todas las pruebas Go con `-race` y sin caché |
 | `mise run test:cargador` / `mise run test:benchmark` / `mise run test:entrenar` | Pruebas por área del codebase Go |
 | `mise run test:nodo` | Pruebas del worker ML: 2 nodos vs 1 worker tolerancia `1e-9` |
+| `mise run docker:up` / `docker:entrenar` / `docker:down` | Clúster completo con Docker Compose (Mongo, Redis, 2 nodos ML); ver [docs/docker_pc4.md](docs/docker_pc4.md) |
 | `mise run db:up` / `mise run db:down` | Levanta/elimina MongoDB 7 en Docker (puerto 27017, volumen `vacunas-mongo`) |
 | `mise run db:seed` | Inserta registros de prueba en la base `vacunas_prueba` (ver `docs/base_de_datos.md`) |
 | `mise run test:almacen` / `mise run test:almacen:mongo` | Pruebas del repositorio de datos: en memoria / contra MongoDB real (requiere `db:up`) |
 | `mise run api` | Levanta la API en `:8080` (flags: `-nodos`, `-mongo`, `-modelo`); Swagger en `/docs` |
 | `mise run test:api` | Pruebas de la API: endpoints, WebSocket y entrenamiento con 2 nodos TCP (`-race`) |
-| `mise run latencia` | Mide `POST /predict` (API en marcha) y escribe `reports/pc4/latencia_api.csv` |
 | `mise run pipeline` | Pipeline de datos completo, en orden (requiere el zip y `reporte.xlsx`) |
 | `mise run train` / `mise run bench` | Entrenamiento y benchmark; reenvían flags, p. ej. `mise run train -max-filas 10000` |
 | `mise run train:prueba` / `mise run bench:prueba` | Corridas cortas con prefijos seguros para no sobrescribir reportes reales |
 | `mise run reportes` | Regenera el benchmark de Go, su figura y el EDA (pesado) |
+| `mise run data:prueba` | Crea `data/prueba/nodo1.csv`, `nodo2.csv` y `predicciones.json` (reales o sintéticos) |
+| `mise run pc4:escalamiento` | Entrena con 1, 2 y 4 nodos TCP locales y guarda `reports/pc4/escalamiento_cluster.csv` (flag `-workers-nodo` para limitar los núcleos de cada nodo) |
+| `mise run pc4:latencia` | Mide la latencia de `/predict` (API levantada) y guarda `reports/pc4/latencia_*` |
+| `mise run pc4:race` | `go test -race -count=1 -v ./...` guardado en `reports/pc4/race_test.txt` |
+
+### Evidencias del PC4
+
+Las tareas `data:prueba`, `pc4:escalamiento`, `pc4:latencia` y `pc4:race` generan las evidencias de `reports/pc4/`; la tabla de archivos, su estado y cómo se produce cada uno está en `reports/pc4/README.md`. Para corridas de prueba usa salidas con prefijo `prueba` (ignoradas por git).
 
 Las tareas de Python también reenvían argumentos: `mise run data:cargar --workers 6 --bloque-mb 32`. Si no usas mise, los comandos equivalentes están en cada sección.
 

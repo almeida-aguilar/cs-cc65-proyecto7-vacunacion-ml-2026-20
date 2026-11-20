@@ -53,7 +53,7 @@ mise run api -nodos localhost:9001,localhost:9002 -mongo mongodb://localhost:270
 curl localhost:8080/health
 curl -X POST localhost:8080/train -d '{"epocas":6,"lote":1024}'
 curl localhost:8080/metrics
-mise run latencia -n 200                          # reports/pc4/latencia_api.csv
+mise run pc4:latencia -cuerpo docs/ejemplos/prueba-p1.json   # mediana y p95 -> reports/pc4/latencia_*.{csv,json}
 ```
 
 En Postman: `POST http://localhost:8080/predict`, Body → raw → JSON `{"entrada": [ ...50 números... ]}`. El tiempo de respuesta aparece arriba a la derecha (captura para #32).
