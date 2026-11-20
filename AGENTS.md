@@ -19,10 +19,11 @@ El trabajo está dividido en dos partes que se encadenan:
   logística con la librería externa `github.com/franztoledo/logreg` v0.1.0 y
   benchmark de paralelización.
 
-La arquitectura "de destino" descrita en
-`docs/resumen_del_proyecto_y_preprocesamiento.md` (Docker Compose, parameter
-server por TCP, MongoDB, Redis, SPA) **no está implementada** en este repo; no
-la des como existente. La documentación vigente de la Parte A es
+De la arquitectura "de destino" descrita en
+`docs/resumen_del_proyecto_y_preprocesamiento.md`, el **parameter server por TCP
+sí está implementado** en `internal/coordinador` y `cmd/coordinador` (PC4, ver
+`docs/protocolo_pc4.md`). Docker Compose, MongoDB, Redis y la SPA **todavía no
+están implementados**; no los des como existentes. La documentación vigente de la Parte A es
 `reports/informe_limpieza_y_analisis.md`; el resumen con la muestra por filas
 quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
 
@@ -58,10 +59,12 @@ quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
 | `src/benchmark_workers.py`, `src/grafica_benchmark.py` | Evidencia de speedup de la fase MAP y su gráfica. |
 | `src/analisis_eda.py`, `src/exploracion/` | Tablas/figuras del EDA. |
 | `internal/cargador/` | Cargador concurrente de CSV en Go + tests. |
+| `internal/coordinador/` | Parameter server del clúster ML + tests con 2 nodos TCP. |
 | `cmd/entrenar/` | Entrena, elige umbral, guarda modelo y reportes. |
 | `cmd/benchmark/` | Mide carga y entrenamiento con 1, 2, 4, 8 y todos los núcleos. |
+| `cmd/coordinador/` | Entrena distribuido y guarda modelo + reporte del servidor. |
 | `reports/` | Informes, métricas, figuras y reportes de Go versionados. |
-| `docs/` | Resumen del caso y preprocesamiento. |
+| `docs/` | Resumen del caso, preprocesamiento, plan PC4 y protocolo TCP. |
 
 ## 4. Comandos
 
@@ -102,6 +105,7 @@ No instales Go/Python a mano:
 mise trust && mise install --locked
 mise run setup        # go mod download + pip install -r requirements.txt
 mise run check        # vet + go test -race (igual que CI)
+mise run test:cluster # pruebas del cluster con 2 nodos TCP, -race y sin caché
 mise run pipeline     # pasos de datos en orden
 mise run train        # reenvía flags: mise run train -max-filas 10000
 mise run bench        # reenvía flags: mise run bench -salida reports/go/prueba_benchmark.csv
