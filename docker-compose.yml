@@ -87,6 +87,8 @@ services:
       - "${EPOCAS:-10}"
       - -lote
       - "${LOTE:-1024}"
+      - -peso-positivo
+      - "${PESO_POSITIVO:-12.43}"
       - -nombre
       - docker
       - -reportes

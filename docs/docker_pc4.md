@@ -69,6 +69,10 @@ mise run docker:entrenar
 
 Ejecuta el coordinador (perfil `entrenamiento`) y escribe en `reports/pc4/`
 `docker_servidor.json` (versionable) y `modelo_docker.json` (ignorado por git).
+El coordinador recibe `-peso-positivo ${PESO_POSITIVO:-12.43}`: 12.43 es
+`negativos/positivos` del train, el mismo peso de la clase positiva usado en
+PC3. Se cambia en `.env`.
+
 El servicio no se levanta con `up`: solo con `run --rm`.
 
 ## Activar la API (reservada)

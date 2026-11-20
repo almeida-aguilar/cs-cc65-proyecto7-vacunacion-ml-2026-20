@@ -8,7 +8,7 @@
     "tamano_lote": 1024,
     "workers": 0,
     "l2": 0,
-    "peso_clase_positiva": 1,
+    "peso_clase_positiva": 12.43,
     "semilla": 42,
     "tolerancia": 0.000001,
     "paciencia": 0,
@@ -16,21 +16,21 @@
   },
   "metricas": {
     "matriz": {
-      "vp": 287,
-      "fp": 171,
-      "vn": 18336,
-      "fn": 1206
+      "vp": 1246,
+      "fp": 4667,
+      "vn": 13840,
+      "fn": 247
     },
     "n": 20000,
     "umbral": 0.5,
-    "exactitud": 0.93115,
-    "precision": 0.6266375545851528,
-    "sensibilidad": 0.19223040857334225,
-    "especificidad": 0.9907602528772896,
-    "f1": 0.2942080984110712,
-    "perdida_log": 0.239652518806329,
+    "exactitud": 0.7543,
+    "precision": 0.21072213766277692,
+    "sensibilidad": 0.8345612860013396,
+    "especificidad": 0.7478251472415842,
+    "f1": 0.3364839319470699,
+    "perdida_log": 0.514493798774553,
     "auc": 0
   },
   "mejor_epoca": 0,
-  "segundos_entrenamiento": 0.065521977
+  "segundos_entrenamiento": 0.051262308
 }
