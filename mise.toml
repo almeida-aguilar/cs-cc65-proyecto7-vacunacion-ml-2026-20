@@ -176,6 +176,19 @@ raw_args = true
 run = "go run ./cmd/seed"
 
 # ---------------------------------------------------------------------------
+# API (PC4)
+# ---------------------------------------------------------------------------
+
+[tasks.api]
+description = "Levanta la API en :8080 (acepta flags de cmd/api, p. ej. -nodos a:9001,b:9002 -mongo mongodb://localhost:27017)"
+raw_args = true
+run = "go run ./cmd/api"
+
+[tasks."test:api"]
+description = "Pruebas de la API: endpoints, WebSocket y entrenamiento con 2 nodos TCP (-race)"
+run = "go test -race -count=1 ./internal/api/..."
+
+# ---------------------------------------------------------------------------
 # Evidencias (PC4)
 # ---------------------------------------------------------------------------
 
@@ -197,6 +210,8 @@ run = "go run ./cmd/latencia"
 [tasks."pc4:race"]
 description = "Ejecuta go test -race -count=1 -v ./... y guarda la salida en reports/pc4/race_test.txt"
 run = "python src/ejecutar_race.py"
+
+# ---------------------------------------------------------------------------
 # Docker (PC4): clúster completo con Docker Compose
 # ---------------------------------------------------------------------------
 
