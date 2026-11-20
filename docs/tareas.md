@@ -1,13 +1,11 @@
 # Tareas del entregable 2 (PC4)
 
-> Generado el 2026-11-20 02:24 UTC desde GitHub Issues (etiqueta `pc4`).
+> Generado el 2026-11-20 02:55 UTC desde GitHub Issues (etiqueta `pc4`).
 > **No editar a mano**: ejecuta `python src/generar_tareas.py`.
 
 ## Checklist
 
-- [ ] #7 🔌 [Go] Implementar Lógica de Sockets TCP y Sincronización. — https://github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/issues/7
 - [ ] #9 🐳 [DevOps] Dockerizar el ecosistema (Python ETL + Go Cluster). — https://github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/issues/9
-- [ ] #27 📝 [Docs] Plan y todo list del entregable PC4 — `documentation` — https://github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/issues/27
 - [ ] #28 🚀 [Go] Nodo ML distribuido (worker de gradientes) — `enhancement` — https://github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/issues/28
 - [ ] #29 🌐 [API] REST + Swagger + WebSocket y latencia <100 ms — `enhancement` — https://github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/issues/29
 - [ ] #30 🗄️ [DB] MongoDB: entidades, repositorio y registros — `enhancement` — https://github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/issues/30
