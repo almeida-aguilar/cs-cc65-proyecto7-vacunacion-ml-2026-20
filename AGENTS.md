@@ -22,8 +22,9 @@ El trabajo está dividido en dos partes que se encadenan:
 De la arquitectura "de destino" descrita en
 `docs/resumen_del_proyecto_y_preprocesamiento.md`, el **parameter server por TCP
 sí está implementado** en `internal/coordinador` y `cmd/coordinador` (PC4, ver
-`docs/protocolo_pc4.md`). MongoDB está implementado como repositorio (`internal/almacen`, ver `docs/base_de_datos.md`). Docker Compose, Redis y la SPA **todavía no
-están implementados**; no los des como existentes. La documentación vigente de la Parte A es
+`docs/protocolo_pc4.md`). MongoDB está implementado como repositorio (`internal/almacen`, ver `docs/base_de_datos.md`). Docker Compose existe (`Dockerfile`, `docker-compose.yml`, `docs/docker_pc4.md`:
+Mongo, Redis y 2 nodos ML; la API está reservada tras el perfil `api`). La SPA
+**todavía no está implementada**; no la des como existente. La documentación vigente de la Parte A es
 `reports/informe_limpieza_y_analisis.md`; el resumen con la muestra por filas
 quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
 
@@ -66,6 +67,7 @@ quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
 | `cmd/benchmark/` | Mide carga y entrenamiento con 1, 2, 4, 8 y todos los núcleos. |
 | `cmd/coordinador/` | Entrena distribuido y guarda modelo + reporte del servidor. |
 | `cmd/nodo/` | Worker ML: sirve un fragmento del CSV por TCP al coordinador. |
+| `Dockerfile`, `docker-compose.yml` | Imagen única y clúster Compose (mongo, seed, redis, nodo1/2, coordinador, api reservada); `.env.example`. |
 | `reports/` | Informes, métricas, figuras y reportes de Go versionados. |
 | `docs/` | Resumen del caso, preprocesamiento, plan PC4 y protocolo TCP. |
 
