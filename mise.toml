@@ -65,6 +65,10 @@ run = "go test -race -count=1 ./cmd/benchmark/..."
 description = "Pruebas del entrenamiento local y sus reportes"
 run = "go test -race -count=1 ./cmd/entrenar/..."
 
+[tasks."test:nodo"]
+description = "Pruebas del nodo ML y equivalencia 2 nodos vs 1 worker"
+run = "go test -race -count=1 ./cmd/nodo/..."
+
 [tasks.check]
 description = "Verificación de CI: vet + pruebas con detector de carrera"
 depends = ["vet", "test:race"]

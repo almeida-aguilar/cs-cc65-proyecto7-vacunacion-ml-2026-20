@@ -63,6 +63,7 @@ quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
 | `cmd/entrenar/` | Entrena, elige umbral, guarda modelo y reportes. |
 | `cmd/benchmark/` | Mide carga y entrenamiento con 1, 2, 4, 8 y todos los núcleos. |
 | `cmd/coordinador/` | Entrena distribuido y guarda modelo + reporte del servidor. |
+| `cmd/nodo/` | Worker ML: sirve un fragmento del CSV por TCP al coordinador. |
 | `reports/` | Informes, métricas, figuras y reportes de Go versionados. |
 | `docs/` | Resumen del caso, preprocesamiento, plan PC4 y protocolo TCP. |
 
@@ -107,7 +108,7 @@ mise run setup        # go mod download + pip install -r requirements.txt
 mise run check        # vet + go test -race (igual que CI)
 mise run test:cluster # pruebas del cluster con 2 nodos TCP, -race y sin caché
 mise run test:go      # todas las pruebas Go con -race y sin caché
-mise run test:cargador  # también: test:benchmark, test:entrenar
+mise run test:cargador  # también: test:benchmark, test:entrenar, test:nodo
 mise run pipeline     # pasos de datos en orden
 mise run train        # reenvía flags: mise run train -max-filas 10000
 mise run bench        # reenvía flags: mise run bench -salida reports/go/prueba_benchmark.csv
