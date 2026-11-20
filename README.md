@@ -22,6 +22,7 @@ Tareas principales:
 | `mise run test:go` | Todas las pruebas Go con `-race` y sin caché |
 | `mise run test:cargador` / `mise run test:benchmark` / `mise run test:entrenar` | Pruebas por área del codebase Go |
 | `mise run test:nodo` | Pruebas del worker ML: 2 nodos vs 1 worker tolerancia `1e-9` |
+| `mise run docker:up` / `docker:entrenar` / `docker:down` | Clúster completo con Docker Compose (Mongo, Redis, 2 nodos ML); ver [docs/docker_pc4.md](docs/docker_pc4.md) |
 | `mise run db:up` / `mise run db:down` | Levanta/elimina MongoDB 7 en Docker (puerto 27017, volumen `vacunas-mongo`) |
 | `mise run db:seed` | Inserta registros de prueba en la base `vacunas_prueba` (ver `docs/base_de_datos.md`) |
 | `mise run test:almacen` / `mise run test:almacen:mongo` | Pruebas del repositorio de datos: en memoria / contra MongoDB real (requiere `db:up`) |

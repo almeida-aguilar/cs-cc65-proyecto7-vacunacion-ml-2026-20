@@ -197,3 +197,34 @@ run = "go run ./cmd/latencia"
 [tasks."pc4:race"]
 description = "Ejecuta go test -race -count=1 -v ./... y guarda la salida en reports/pc4/race_test.txt"
 run = "python src/ejecutar_race.py"
+# Docker (PC4): clúster completo con Docker Compose
+# ---------------------------------------------------------------------------
+
+[tasks."docker:build"]
+description = "Construye la imagen única del clúster (nodos, coordinador, seed)"
+run = "docker compose build"
+
+[tasks."docker:up"]
+description = "Levanta MongoDB (con semilla), Redis y 2 nodos ML en segundo plano"
+run = "docker compose up -d"
+
+[tasks."docker:ps"]
+description = "Muestra el estado de los servicios de Compose"
+run = "docker compose ps -a"
+
+[tasks."docker:logs"]
+description = "Muestra los logs de Compose (acepta servicios, ej. nodo1)"
+raw_args = true
+run = "docker compose logs"
+
+[tasks."docker:entrenar"]
+description = "Entrena distribuido contra los nodos de Docker (reports/pc4/docker_*)"
+run = "docker compose --profile entrenamiento run --rm coordinador"
+
+[tasks."docker:mongo"]
+description = "Abre mongosh dentro del contenedor, base vacunas_prueba"
+run = "docker compose exec mongo mongosh vacunas_prueba"
+
+[tasks."docker:down"]
+description = "Detiene y elimina los contenedores de Compose (los volúmenes se conservan)"
+run = "docker compose --profile entrenamiento --profile api down"
