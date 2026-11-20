@@ -22,7 +22,7 @@ El trabajo está dividido en dos partes que se encadenan:
 De la arquitectura "de destino" descrita en
 `docs/resumen_del_proyecto_y_preprocesamiento.md`, el **parameter server por TCP
 sí está implementado** en `internal/coordinador` y `cmd/coordinador` (PC4, ver
-`docs/protocolo_pc4.md`). Docker Compose, MongoDB, Redis y la SPA **todavía no
+`docs/protocolo_pc4.md`). MongoDB está implementado como repositorio (`internal/almacen`, ver `docs/base_de_datos.md`). Docker Compose, Redis y la SPA **todavía no
 están implementados**; no los des como existentes. La documentación vigente de la Parte A es
 `reports/informe_limpieza_y_analisis.md`; el resumen con la muestra por filas
 quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
@@ -59,6 +59,8 @@ quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
 | `src/benchmark_workers.py`, `src/grafica_benchmark.py` | Evidencia de speedup de la fase MAP y su gráfica. |
 | `src/analisis_eda.py`, `src/exploracion/` | Tablas/figuras del EDA. |
 | `internal/cargador/` | Cargador concurrente de CSV en Go + tests. |
+| `internal/almacen/` | Entidades y repositorio de datos (MongoDB y memoria) + tests. |
+| `cmd/seed/` | Inserta registros de prueba en MongoDB. |
 | `internal/coordinador/` | Parameter server del clúster ML + tests con 2 nodos TCP. |
 | `cmd/entrenar/` | Entrena, elige umbral, guarda modelo y reportes. |
 | `cmd/benchmark/` | Mide carga y entrenamiento con 1, 2, 4, 8 y todos los núcleos. |

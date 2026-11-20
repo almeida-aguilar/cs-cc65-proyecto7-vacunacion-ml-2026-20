@@ -69,6 +69,15 @@ run = "go test -race -count=1 ./cmd/entrenar/..."
 description = "Pruebas del nodo ML y equivalencia 2 nodos vs 1 worker"
 run = "go test -race -count=1 ./cmd/nodo/..."
 
+[tasks."test:almacen"]
+description = "Pruebas del repositorio de datos (memoria; con Mongo real si MONGO_URI está definida)"
+run = "go test -race -count=1 ./internal/almacen/..."
+
+[tasks."test:almacen:mongo"]
+description = "Pruebas del repositorio contra MongoDB real en localhost (requiere db:up)"
+env = { MONGO_URI = "mongodb://localhost:27017" }
+run = "go test -race -count=1 -v ./internal/almacen/..."
+
 [tasks.check]
 description = "Verificación de CI: vet + pruebas con detector de carrera"
 depends = ["vet", "test:race"]
@@ -148,3 +157,20 @@ run = [
   { task = "data:figuras" },
   { task = "data:eda" },
 ]
+
+# ---------------------------------------------------------------------------
+# Base de datos (PC4): MongoDB local en Docker
+# ---------------------------------------------------------------------------
+
+[tasks."db:up"]
+description = "Levanta MongoDB 7 en Docker (puerto 27017, volumen vacunas-mongo)"
+run = "docker run -d --name vacunas-mongo -p 27017:27017 -v vacunas-mongo:/data/db mongo:7"
+
+[tasks."db:down"]
+description = "Detiene y elimina el contenedor de MongoDB (el volumen se conserva)"
+run = "docker rm -f vacunas-mongo"
+
+[tasks."db:seed"]
+description = "Inserta registros de prueba en MongoDB (acepta los flags de cmd/seed)"
+raw_args = true
+run = "go run ./cmd/seed"
