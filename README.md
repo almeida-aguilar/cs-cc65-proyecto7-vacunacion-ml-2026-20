@@ -25,6 +25,9 @@ Tareas principales:
 | `mise run db:up` / `mise run db:down` | Levanta/elimina MongoDB 7 en Docker (puerto 27017, volumen `vacunas-mongo`) |
 | `mise run db:seed` | Inserta registros de prueba en la base `vacunas_prueba` (ver `docs/base_de_datos.md`) |
 | `mise run test:almacen` / `mise run test:almacen:mongo` | Pruebas del repositorio de datos: en memoria / contra MongoDB real (requiere `db:up`) |
+| `mise run api` | Levanta la API en `:8080` (flags: `-nodos`, `-mongo`, `-modelo`); Swagger en `/docs` |
+| `mise run test:api` | Pruebas de la API: endpoints, WebSocket y entrenamiento con 2 nodos TCP (`-race`) |
+| `mise run latencia` | Mide `POST /predict` (API en marcha) y escribe `reports/pc4/latencia_api.csv` |
 | `mise run pipeline` | Pipeline de datos completo, en orden (requiere el zip y `reporte.xlsx`) |
 | `mise run train` / `mise run bench` | Entrenamiento y benchmark; reenvían flags, p. ej. `mise run train -max-filas 10000` |
 | `mise run train:prueba` / `mise run bench:prueba` | Corridas cortas con prefijos seguros para no sobrescribir reportes reales |

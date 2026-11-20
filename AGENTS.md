@@ -22,7 +22,7 @@ El trabajo está dividido en dos partes que se encadenan:
 De la arquitectura "de destino" descrita en
 `docs/resumen_del_proyecto_y_preprocesamiento.md`, el **parameter server por TCP
 sí está implementado** en `internal/coordinador` y `cmd/coordinador` (PC4, ver
-`docs/protocolo_pc4.md`). MongoDB está implementado como repositorio (`internal/almacen`, ver `docs/base_de_datos.md`). Docker Compose, Redis y la SPA **todavía no
+`docs/protocolo_pc4.md`). La API REST/WebSocket está implementada en `internal/api` y `cmd/api`. MongoDB está implementado como repositorio (`internal/almacen`, ver `docs/base_de_datos.md`). Docker Compose, Redis y la SPA **todavía no
 están implementados**; no los des como existentes. La documentación vigente de la Parte A es
 `reports/informe_limpieza_y_analisis.md`; el resumen con la muestra por filas
 quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
@@ -59,6 +59,8 @@ quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
 | `src/benchmark_workers.py`, `src/grafica_benchmark.py` | Evidencia de speedup de la fase MAP y su gráfica. |
 | `src/analisis_eda.py`, `src/exploracion/` | Tablas/figuras del EDA. |
 | `internal/cargador/` | Cargador concurrente de CSV en Go + tests. |
+| `internal/api/` | API HTTP: `/health`, `/predict`, `/train`, `/metrics`, `/docs`, `/ws` + tests (ver `docs/api.md`). |
+| `cmd/api/`, `cmd/latencia/` | Ejecutable de la API y medidor de latencia de `/predict`. |
 | `internal/almacen/` | Entidades y repositorio de datos (MongoDB y memoria) + tests. |
 | `cmd/seed/` | Inserta registros de prueba en MongoDB. |
 | `internal/coordinador/` | Parameter server del clúster ML + tests con 2 nodos TCP. |
