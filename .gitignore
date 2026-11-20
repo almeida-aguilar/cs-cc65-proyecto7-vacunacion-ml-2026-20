@@ -16,9 +16,11 @@ modelo.json
 modelo_*.json
 # Los reportes de Go (CSV pequeños) sí se versionan
 !reports/go/*.csv
+!reports/pc4/*.csv
 
 # Corridas con datos simulados
 reports/go/prueba*
+reports/pc4/prueba*
 
 # mise (gestor de herramientas y orquestador)
 .venv/
