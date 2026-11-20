@@ -10,7 +10,7 @@ info:
     el inicio de sesión de la SPA en el entregable 3 (TB2).
     **WebSocket:** `GET /ws` (esquema `ws://`) envía eventos JSON con la forma
     `{"tipo": "...", "fecha": "...", "datos": {...}}`. Tipos: `conectado`,
-    `prediccion`, `inicio`, `progreso`, `fin`, `error`, `metricas`.
+    `prediccion`, `prediccion_lote`, `inicio`, `progreso`, `fin`, `error`, `metricas`.
 servers:
   - url: http://localhost:8080
 paths:
@@ -26,10 +26,13 @@ paths:
               schema: { $ref: "#/components/schemas/Salud" }
   /predict:
     post:
-      summary: Predice la probabilidad de deserción de la segunda dosis
+      summary: Predice la probabilidad de deserción de la segunda dosis (una persona o un lote)
       description: |
-        `entrada` debe tener tantas variables como el modelo (ver `variables` en
+        Envía **una persona** (`entrada`) o **varias** (`filas`, máximo 1000), nunca ambas.
+        Cada vector debe tener tantas variables como el modelo (ver `variables` en
         `/health`), en el orden de `data/modelo/columnas.json` y sin escalar.
+        `columnas` es opcional: si se envía, debe tener tantos nombres como variables.
+        Con `filas` la respuesta es un lote (`predicciones`, en el mismo orden); no usa la caché.
       tags: [Predicción]
       requestBody:
         required: true
@@ -38,12 +41,15 @@ paths:
             schema: { $ref: "#/components/schemas/PeticionPrediccion" }
       responses:
         "200":
-          description: Predicción calculada (o servida desde la caché)
+          description: Predicción calculada o servida desde la caché (`entrada`), o lote de predicciones (`filas`)
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Prediccion" }
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Prediccion"
+                  - $ref: "#/components/schemas/PrediccionLote"
         "400":
-          description: JSON inválido o cantidad de variables incorrecta
+          description: JSON inválido, cantidad de variables incorrecta, lote vacío o demasiado grande, o se enviaron `entrada` y `filas` a la vez
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -128,12 +134,25 @@ components:
         segundos_activo: { type: number }
     PeticionPrediccion:
       type: object
-      required: [entrada]
+      description: Envía `entrada` o `filas`.
       properties:
         entrada:
           type: array
           items: { type: number }
+          description: Una persona
           example: [30, 400, 0.1, 0.1, 0, 1, 0, 0.3]
+        filas:
+          type: array
+          maxItems: 1000
+          items:
+            type: array
+            items: { type: number }
+          description: Varias personas (lote)
+          example: [[30, 400, 0.1, 0.1, 0, 1, 0, 0.3], [60, 150, 0.07, 0.07, 0, 0, 1, 0.5]]
+        columnas:
+          type: array
+          items: { type: string }
+          description: Opcional; nombres de las variables (se comprueba la cantidad)
     Prediccion:
       type: object
       properties:
@@ -142,6 +161,22 @@ components:
         umbral: { type: number, example: 0.48 }
         latencia_ms: { type: number, example: 0.05 }
         origen: { type: string, enum: [calculo, cache, mongo] }
+        ejecucion_id: { type: string }
+    PrediccionLote:
+      type: object
+      properties:
+        predicciones:
+          type: array
+          items:
+            type: object
+            properties:
+              probabilidad: { type: number }
+              clase: { type: integer, enum: [0, 1] }
+              origen: { type: string, example: calculo }
+        total: { type: integer }
+        positivas: { type: integer, description: "Filas con clase 1" }
+        umbral: { type: number }
+        latencia_ms: { type: number, description: "Tiempo de todo el lote" }
         ejecucion_id: { type: string }
     PeticionEntrenamiento:
       type: object

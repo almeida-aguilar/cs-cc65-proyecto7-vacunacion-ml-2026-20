@@ -259,8 +259,15 @@ func (s *Servidor) salud(w http.ResponseWriter, r *http.Request) {
 
 // --------------------------------------------------------------- /predict
 
+// maxFilasLote limita el tamaño de un lote en POST /predict.
+const maxFilasLote = 1000
+
+// peticionPrediccion admite una persona ("entrada") o varias ("filas", con
+// "columnas" opcional para comprobar que el orden de variables es el esperado).
 type peticionPrediccion struct {
-	Entrada []float64 `json:"entrada"`
+	Entrada  []float64   `json:"entrada"`
+	Filas    [][]float64 `json:"filas"`
+	Columnas []string    `json:"columnas"`
 }
 
 type respuestaPrediccion struct {
@@ -270,6 +277,51 @@ type respuestaPrediccion struct {
 	LatenciaMs   float64 `json:"latencia_ms"`
 	Origen       string  `json:"origen"`
 	EjecucionID  string  `json:"ejecucion_id,omitempty"`
+}
+
+// prediccionLote es el resultado de una fila de un lote, en el mismo orden.
+type prediccionLote struct {
+	Probabilidad float64 `json:"probabilidad"`
+	Clase        int     `json:"clase"`
+	Origen       string  `json:"origen"`
+}
+
+// respuestaLote es la respuesta de POST /predict cuando se envían "filas".
+type respuestaLote struct {
+	Predicciones []prediccionLote `json:"predicciones"`
+	Total        int              `json:"total"`
+	Positivas    int              `json:"positivas"`
+	Umbral       float64          `json:"umbral"`
+	LatenciaMs   float64          `json:"latencia_ms"`
+	EjecucionID  string           `json:"ejecucion_id,omitempty"`
+}
+
+// validar comprueba la forma de la petición contra el modelo vigente.
+func (p *peticionPrediccion) validar(variables int) error {
+	if p.Entrada != nil && p.Filas != nil {
+		return fmt.Errorf("envía \"entrada\" (una persona) o \"filas\" (varias), no ambos")
+	}
+	if p.Columnas != nil && len(p.Columnas) != variables {
+		return fmt.Errorf("\"columnas\" tiene %d nombres y el modelo espera %d variables", len(p.Columnas), variables)
+	}
+	if p.Filas == nil {
+		if len(p.Entrada) != variables {
+			return fmt.Errorf("se esperaban %d variables en \"entrada\", llegaron %d", variables, len(p.Entrada))
+		}
+		return nil
+	}
+	if len(p.Filas) == 0 {
+		return fmt.Errorf("\"filas\" está vacío")
+	}
+	if len(p.Filas) > maxFilasLote {
+		return fmt.Errorf("\"filas\" tiene %d filas y el máximo por petición es %d", len(p.Filas), maxFilasLote)
+	}
+	for indice, fila := range p.Filas {
+		if len(fila) != variables {
+			return fmt.Errorf("la fila %d tiene %d variables, se esperaban %d", indice+1, len(fila), variables)
+		}
+	}
+	return nil
 }
 
 func (s *Servidor) predecir(w http.ResponseWriter, r *http.Request) {
@@ -285,9 +337,12 @@ func (s *Servidor) predecir(w http.ResponseWriter, r *http.Request) {
 		fallo(w, http.StatusBadRequest, err.Error(), inicio)
 		return
 	}
-	if len(peticion.Entrada) != modelo.NumVariables() {
-		fallo(w, http.StatusBadRequest,
-			fmt.Sprintf("se esperaban %d variables en \"entrada\", llegaron %d", modelo.NumVariables(), len(peticion.Entrada)), inicio)
+	if err := peticion.validar(modelo.NumVariables()); err != nil {
+		fallo(w, http.StatusBadRequest, err.Error(), inicio)
+		return
+	}
+	if peticion.Filas != nil {
+		s.predecirLote(w, inicio, modelo, ejecucionID, peticion.Filas)
 		return
 	}
 
@@ -311,16 +366,63 @@ func (s *Servidor) predecir(w http.ResponseWriter, r *http.Request) {
 		clase = 1
 	}
 	latencia := s.responderPrediccion(w, inicio, probabilidad, clase, modelo.Umbral, almacen.OrigenCalculo, ejecucionID)
-
-	prediccion := almacen.Prediccion{
+	s.encolar(almacen.Prediccion{
 		EjecucionID: ejecucionID, Entrada: peticion.Entrada, HashEntrada: hash,
 		Probabilidad: probabilidad, Clase: clase, Umbral: modelo.Umbral,
 		LatenciaMs: latencia, Origen: almacen.OrigenCalculo, Fecha: time.Now().UTC(),
-	}
+	})
+}
+
+// encolar envía la predicción a la cola de persistencia sin bloquear: si la
+// cola está llena se prefiere perder el registro antes que frenar la respuesta.
+func (s *Servidor) encolar(prediccion almacen.Prediccion) {
 	select {
 	case s.cola <- prediccion:
-	default: // cola llena: se prefiere perder el registro antes que frenar la respuesta
+	default:
 		s.descartadas.Add(1)
+	}
+}
+
+// predecirLote calcula las probabilidades de todas las filas con
+// Modelo.ProbabilidadLote, que reparte el trabajo entre goroutines (cada una
+// escribe en su propio rango de la salida, sin mutex). La caché no se consulta
+// en los lotes: calcular es más barato que una ida y vuelta por fila.
+func (s *Servidor) predecirLote(w http.ResponseWriter, inicio time.Time, modelo *logreg.Modelo, ejecucionID string, filas [][]float64) {
+	probabilidades, err := modelo.ProbabilidadLote(filas, 0)
+	if err != nil {
+		fallo(w, http.StatusBadRequest, err.Error(), inicio)
+		return
+	}
+	respuesta := respuestaLote{
+		Predicciones: make([]prediccionLote, len(filas)),
+		Total:        len(filas),
+		Umbral:       modelo.Umbral,
+		EjecucionID:  ejecucionID,
+	}
+	ahora := time.Now().UTC()
+	for indice, probabilidad := range probabilidades {
+		clase := 0
+		if probabilidad >= modelo.Umbral {
+			clase = 1
+			respuesta.Positivas++
+		}
+		respuesta.Predicciones[indice] = prediccionLote{Probabilidad: probabilidad, Clase: clase, Origen: almacen.OrigenCalculo}
+	}
+	respuesta.LatenciaMs = milisegundos(time.Since(inicio))
+	s.latencias.registrar(respuesta.LatenciaMs)
+	responder(w, http.StatusOK, respuesta, inicio)
+	s.hub.publicar("prediccion_lote", map[string]any{
+		"total": respuesta.Total, "positivas": respuesta.Positivas,
+		"umbral": respuesta.Umbral, "latencia_ms": respuesta.LatenciaMs,
+	})
+
+	for indice, fila := range filas {
+		s.encolar(almacen.Prediccion{
+			EjecucionID: ejecucionID, Entrada: fila, HashEntrada: almacen.HashEntrada(fila),
+			Probabilidad: probabilidades[indice], Clase: respuesta.Predicciones[indice].Clase,
+			Umbral: modelo.Umbral, LatenciaMs: respuesta.LatenciaMs / float64(len(filas)),
+			Origen: almacen.OrigenCalculo, Fecha: ahora,
+		})
 	}
 }
 

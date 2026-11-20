@@ -408,3 +408,114 @@ func TestPercentiles(t *testing.T) {
 		t.Error("una ventana vacía no debe tener muestras")
 	}
 }
+
+// ---------------------------------------------------------------- lotes
+
+func TestPredecirLoteIgualQueIndividual(t *testing.T) {
+	servidor, repo := nuevoServidorDePrueba(t, true, nil)
+	filas := [][]float64{{3, 0}, {0, 3}, {1, 1}}
+
+	cuerpo, _ := json.Marshal(map[string]any{"columnas": []string{"a", "b"}, "filas": filas})
+	respuesta := peticion(t, servidor, "POST", "/predict", string(cuerpo))
+	if respuesta.Code != http.StatusOK {
+		t.Fatalf("estado %d: %s", respuesta.Code, respuesta.Body.String())
+	}
+	var lote respuestaLote
+	if err := json.Unmarshal(respuesta.Body.Bytes(), &lote); err != nil {
+		t.Fatalf("JSON inválido: %v", err)
+	}
+	if lote.Total != 3 || len(lote.Predicciones) != 3 || lote.EjecucionID != "ej-prueba" {
+		t.Fatalf("lote inesperado: %+v", lote)
+	}
+
+	// Cada fila debe dar lo mismo que la petición individual.
+	positivas := 0
+	for indice, fila := range filas {
+		individual := peticion(t, servidor, "POST", "/predict", fmt.Sprintf(`{"entrada":[%v,%v]}`, fila[0], fila[1]))
+		var unica respuestaPrediccion
+		_ = json.Unmarshal(individual.Body.Bytes(), &unica)
+		if diferencia := unica.Probabilidad - lote.Predicciones[indice].Probabilidad; diferencia > 1e-12 || diferencia < -1e-12 {
+			t.Errorf("fila %d: lote %v, individual %v", indice+1, lote.Predicciones[indice].Probabilidad, unica.Probabilidad)
+		}
+		if unica.Clase != lote.Predicciones[indice].Clase {
+			t.Errorf("fila %d: clase distinta entre lote e individual", indice+1)
+		}
+		positivas += unica.Clase
+	}
+	if lote.Positivas != positivas {
+		t.Errorf("positivas %d, se esperaban %d", lote.Positivas, positivas)
+	}
+
+	servidor.Cerrar()
+	guardadas, _ := repo.UltimasPredicciones(context.Background(), 0)
+	if len(guardadas) != 6 { // 3 del lote + 3 individuales
+		t.Errorf("se esperaban 6 predicciones guardadas, hay %d", len(guardadas))
+	}
+}
+
+func TestPredecirLoteValidaLaPeticion(t *testing.T) {
+	servidor, _ := nuevoServidorDePrueba(t, true, nil)
+	defer servidor.Cerrar()
+	muchas := make([][]float64, maxFilasLote+1)
+	for indice := range muchas {
+		muchas[indice] = []float64{1, 1}
+	}
+	excesivo, _ := json.Marshal(map[string]any{"filas": muchas})
+	casos := map[string]struct{ cuerpo, fragmento string }{
+		"entrada y filas":      {`{"entrada":[1,1],"filas":[[1,1]]}`, "no ambos"},
+		"filas vacío":          {`{"filas":[]}`, "vacío"},
+		"fila corta":           {`{"filas":[[1,1],[1]]}`, "la fila 2 tiene 1 variables"},
+		"columnas incorrectas": {`{"columnas":["a"],"filas":[[1,1]]}`, "columnas"},
+		"columnas con entrada": {`{"columnas":["a","b","c"],"entrada":[1,1]}`, "columnas"},
+		"demasiadas filas":     {string(excesivo), "máximo"},
+	}
+	for nombre, caso := range casos {
+		respuesta := peticion(t, servidor, "POST", "/predict", caso.cuerpo)
+		if respuesta.Code != http.StatusBadRequest {
+			t.Errorf("%s: estado %d, se esperaba 400", nombre, respuesta.Code)
+			continue
+		}
+		var cuerpoError errorAPI
+		_ = json.Unmarshal(respuesta.Body.Bytes(), &cuerpoError)
+		if !strings.Contains(cuerpoError.Error, caso.fragmento) {
+			t.Errorf("%s: el error %q no menciona %q", nombre, cuerpoError.Error, caso.fragmento)
+		}
+	}
+}
+
+func TestPredecirLoteAvisaPorWebSocket(t *testing.T) {
+	servidor, _ := nuevoServidorDePrueba(t, true, nil)
+	defer servidor.Cerrar()
+	web := httptest.NewServer(servidor.Handler())
+	defer web.Close()
+	cliente, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(web.URL, "http")+"/ws", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cliente.Close()
+	_ = cliente.SetReadDeadline(time.Now().Add(5 * time.Second))
+	var saludo evento
+	_ = cliente.ReadJSON(&saludo)
+
+	respuesta, err := http.Post(web.URL+"/predict", "application/json", strings.NewReader(`{"filas":[[1,1],[2,2]]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	respuesta.Body.Close()
+	var mensaje evento
+	if err := cliente.ReadJSON(&mensaje); err != nil || mensaje.Tipo != "prediccion_lote" {
+		t.Errorf("se esperaba el evento prediccion_lote, llegó %+v (%v)", mensaje, err)
+	}
+}
+
+// El archivo data/prueba/predicciones.json que genera src/generar_datos_prueba.py
+// tiene la forma {"columnas": [...], "filas": [[...]]}: debe ser aceptado tal cual.
+func TestPredecirAceptaElFormatoDeDatosDePrueba(t *testing.T) {
+	servidor, _ := nuevoServidorDePrueba(t, true, nil)
+	defer servidor.Cerrar()
+	cuerpo := `{"columnas": ["edad", "dias_desde_inicio"], "filas": [[30, 100], [60, 400]]}`
+	respuesta := peticion(t, servidor, "POST", "/predict", cuerpo)
+	if respuesta.Code != http.StatusOK {
+		t.Fatalf("estado %d: %s", respuesta.Code, respuesta.Body.String())
+	}
+}
