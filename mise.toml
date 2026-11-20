@@ -1,0 +1,126 @@
+# mise: gestor de herramientas y orquestador de tareas del proyecto.
+# Las versiones exactas se congelan en mise.lock (committearlo).
+min_version = { soft = "2026.7.0" }
+
+[tools]
+go = "1.22"
+python = "3.12"
+
+[settings]
+lockfile = true
+python.venv_stdlib = true # .venv con pip (no uv), para `python -m pip install`
+
+[env]
+_.python.venv = { path = ".venv", create = true }
+
+# ---------------------------------------------------------------------------
+# Instalación y verificación
+# ---------------------------------------------------------------------------
+
+[tasks.setup]
+description = "Instala dependencias de Go y Python (ejecutar tras mise install)"
+depends = ["deps:go", "deps:python"]
+
+[tasks."deps:go"]
+description = "Descarga los módulos Go declarados en go.mod"
+run = "go mod download"
+
+[tasks."deps:python"]
+description = "Instala requirements.txt dentro de .venv"
+run = "python -m pip install -r requirements.txt"
+
+[tasks.fmt]
+description = "Formatea el código Go con gofmt"
+run = "gofmt -w ./cmd ./internal"
+
+[tasks.vet]
+description = "Análisis estático del código Go"
+run = "go vet ./..."
+
+[tasks.test]
+description = "Pruebas Go (sin detector de carrera)"
+run = "go test ./..."
+
+[tasks."test:race"]
+description = "Pruebas Go con detector de carrera"
+run = "go test -race ./..."
+
+[tasks.check]
+description = "Verificación de CI: vet + pruebas con detector de carrera"
+depends = ["vet", "test:race"]
+
+# ---------------------------------------------------------------------------
+# Parte A: pipeline de datos (ejecutar siempre desde la raíz del repo)
+# ---------------------------------------------------------------------------
+
+[tasks."data:extraer"]
+description = "zip -> 7z -> CSV original (acepta los flags de 00_extraer.py)"
+raw_args = true
+run = "python src/00_extraer.py"
+
+[tasks."data:cargar"]
+description = "Carga concurrente MAP + REDUCE (acepta flags de loader_concurrente.py)"
+raw_args = true
+run = "python src/loader_concurrente.py"
+
+[tasks."data:construir"]
+description = "Construye el dataset de entrenamiento (acepta flags de construir_dataset.py)"
+raw_args = true
+run = "python src/construir_dataset.py"
+
+[tasks."data:exportar"]
+description = "Genera los CSV numéricos que consume Go en data/modelo/"
+run = "python src/exportar_para_modelo.py"
+
+[tasks."data:eda"]
+description = "Genera tablas y figuras del análisis exploratorio"
+run = "python src/analisis_eda.py"
+
+[tasks."data:bench"]
+description = "Mide el speedup del MAP en Python (1..12 workers)"
+run = "python src/benchmark_workers.py"
+
+[tasks."data:figuras"]
+description = "Regenera la figura del benchmark de Go"
+run = "python src/grafica_benchmark.py reports/go/benchmark_workers_go.csv reports/figuras/21_benchmark_go.png"
+
+[tasks.pipeline]
+description = "Pipeline de datos completo, en orden (requiere el zip y la tabla de ruralidad)"
+run = [
+  { task = "deps:python" },
+  { task = "data:extraer" },
+  { task = "data:cargar" },
+  { task = "data:construir" },
+  { task = "data:exportar" },
+  { task = "data:eda" },
+]
+
+# ---------------------------------------------------------------------------
+# Parte B: entrenamiento y benchmark en Go
+# ---------------------------------------------------------------------------
+
+[tasks.train]
+description = "Entrena el modelo (acepta los flags de cmd/entrenar)"
+raw_args = true
+run = "go run ./cmd/entrenar"
+
+[tasks."train:prueba"]
+description = "Entrenamiento corto con -nombre prueba (no sobrescribe reportes reales)"
+run = "go run ./cmd/entrenar -nombre prueba -max-filas 10000"
+
+[tasks.bench]
+description = "Benchmark de paralelización (acepta los flags de cmd/benchmark)"
+raw_args = true
+run = "go run ./cmd/benchmark"
+
+[tasks."bench:prueba"]
+description = "Benchmark corto con salida reports/go/prueba_benchmark.csv"
+run = "go run ./cmd/benchmark -max-filas 10000 -salida reports/go/prueba_benchmark.csv"
+
+[tasks.reportes]
+description = "Regenera el benchmark de Go, su figura y el EDA (tarea pesada)"
+run = [
+  { task = "bench" },
+  { task = "data:figuras" },
+  { task = "data:eda" },
+]

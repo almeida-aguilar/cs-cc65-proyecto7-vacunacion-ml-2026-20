@@ -1,5 +1,30 @@
 # cs-cc65-proyecto7-vacunacion-ml-2026-20
 
+## Herramientas y tareas (mise)
+
+El proyecto usa [mise](https://mise.jdx.dev/) como gestor de versiones y orquestador de tareas. `mise.toml` fija Go 1.22 y Python 3.12 (con entorno virtual `.venv`); `mise.lock` congela las versiones exactas para que local y CI usen lo mismo.
+
+```bash
+# Si aún no tienes mise: curl -fsSL https://mise.jdx.dev/install.sh | sh
+mise trust              # una vez, para aceptar la configuración del repo
+mise install --locked   # instala Go y Python
+mise run setup          # go mod download + pip install -r requirements.txt
+mise tasks ls           # lista todas las tareas
+```
+
+Tareas principales:
+
+| Tarea | Qué hace |
+|---|---|
+| `mise run check` | `go vet ./...` + `go test -race ./...` (lo que ejecuta CI) |
+| `mise run fmt` / `mise run test` | Formatear con `gofmt` / pruebas sin race |
+| `mise run pipeline` | Pipeline de datos completo, en orden (requiere el zip y `reporte.xlsx`) |
+| `mise run train` / `mise run bench` | Entrenamiento y benchmark; reenvían flags, p. ej. `mise run train -max-filas 10000` |
+| `mise run train:prueba` / `mise run bench:prueba` | Corridas cortas con prefijos seguros para no sobrescribir reportes reales |
+| `mise run reportes` | Regenera el benchmark de Go, su figura y el EDA (pesado) |
+
+Las tareas de Python también reenvían argumentos: `mise run data:cargar --workers 6 --bloque-mb 32`. Si no usas mise, los comandos equivalentes están en cada sección.
+
 ## Parte A – Cargador concurrente y limpieza (Python)
 Ver `reports/informe_limpieza_y_analisis.md` (procedimiento, evidencias e insights) y la sección "Reproducir" del informe.
 Código en `src/`: `00_extraer.py`, `loader_concurrente.py`, `limpieza_comun.py`, `enriquecer_rural.py`, `construir_dataset.py`, `benchmark_workers.py`, `analisis_eda.py`. Los datos (`data/`) no se versionan.
@@ -28,9 +53,9 @@ data/modelo/         CSV de entrada para Go (no se versiona)
 ```
 
 ### Requisitos
-- Go 1.22 o superior.
-- Python, solo para generar los datos (los mismos requisitos de la Parte A, `requirements.txt`).
-- En Windows, `go test -race` necesita `gcc`. Si no lo tienes, usa `go test ./...`; GitHub Actions ejecuta `go vet ./...` y `go test -race ./...` en cada push y pull request.
+- Go 1.22 o superior (mise instala la versión fijada en `mise.toml`; `mise install --locked`).
+- Python, solo para generar los datos: mise instala 3.12 y crea `.venv` con `requirements.txt` (`mise run setup`).
+- En Windows, `go test -race` necesita `gcc`. Si no lo tienes, usa `mise run test` (`go test ./...`); GitHub Actions ejecuta `mise run check` en cada push y pull request.
 
 ### Datos
 `data/` no se versiona (ver "Datos (no versionados)" en la Parte A). Los CSV para Go se generan con:
@@ -68,6 +93,7 @@ go run ./cmd/benchmark
 Pruebas (no necesitan los datos):
 ```bash
 go test ./...
+# o, con mise: mise run check (vet + go test -race, igual que CI)
 ```
 
 ### Parámetros (flags)

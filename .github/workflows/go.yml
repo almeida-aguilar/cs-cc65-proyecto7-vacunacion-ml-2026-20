@@ -9,11 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
+      # mise instala Go desde mise.toml/mise.lock; la misma config que en local
+      - uses: jdx/mise-action@v5
       # Los tests no dependen de data/, solo de CSV pequeños creados en memoria
-      - name: Análisis estático
-        run: go vet ./...
-      - name: Pruebas con detector de condiciones de carrera
-        run: go test -race ./...
+      - name: Verificación (mise run check)
+        run: mise run check
