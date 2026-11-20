@@ -45,6 +45,10 @@ run = "go test ./..."
 description = "Pruebas Go con detector de carrera"
 run = "go test -race ./..."
 
+[tasks."test:cluster"]
+description = "Pruebas del cluster ML (2 nodos TCP) con race y sin caché"
+run = "go test -race -count=1 ./internal/coordinador/..."
+
 [tasks.check]
 description = "Verificación de CI: vet + pruebas con detector de carrera"
 depends = ["vet", "test:race"]
