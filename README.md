@@ -19,6 +19,8 @@ Tareas principales:
 | `mise run check` | `go vet ./...` + `go test -race ./...` (lo que ejecuta CI) |
 | `mise run fmt` / `mise run test` | Formatear con `gofmt` / pruebas sin race |
 | `mise run test:cluster` | Pruebas del cluster ML con 2 nodos TCP, `-race` y sin caché |
+| `mise run test:go` | Todas las pruebas Go con `-race` y sin caché |
+| `mise run test:cargador` / `mise run test:benchmark` / `mise run test:entrenar` | Pruebas por área del codebase Go |
 | `mise run pipeline` | Pipeline de datos completo, en orden (requiere el zip y `reporte.xlsx`) |
 | `mise run train` / `mise run bench` | Entrenamiento y benchmark; reenvían flags, p. ej. `mise run train -max-filas 10000` |
 | `mise run train:prueba` / `mise run bench:prueba` | Corridas cortas con prefijos seguros para no sobrescribir reportes reales |

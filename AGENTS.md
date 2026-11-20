@@ -106,6 +106,8 @@ mise trust && mise install --locked
 mise run setup        # go mod download + pip install -r requirements.txt
 mise run check        # vet + go test -race (igual que CI)
 mise run test:cluster # pruebas del cluster con 2 nodos TCP, -race y sin caché
+mise run test:go      # todas las pruebas Go con -race y sin caché
+mise run test:cargador  # también: test:benchmark, test:entrenar
 mise run pipeline     # pasos de datos en orden
 mise run train        # reenvía flags: mise run train -max-filas 10000
 mise run bench        # reenvía flags: mise run bench -salida reports/go/prueba_benchmark.csv
