@@ -6,6 +6,7 @@ import (
 	"math"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/franztoledo/logreg"
 )
@@ -121,6 +122,38 @@ func TestParameterServerIgualQueEntrenamientoLocal(t *testing.T) {
 			t.Errorf("peso %d: distribuido %.8f vs local %.8f (diff %.2e)",
 				indice, distribuido.Modelo.Pesos[indice], local.Modelo.Pesos[indice], diferencia)
 		}
+	}
+}
+
+func TestParameterServerToleraNodoInactivo(t *testing.T) {
+	direcciones, _ := levantarNodos(t, 3)
+	servidor, err := Nuevo(Opciones{
+		Direcciones:  append(direcciones, "127.0.0.1:1"),
+		Epocas:       3,
+		TamanoLote:   256,
+		MinimoNodos:  2,
+		Reintentos:   0,
+		TiempoEspera: time.Second,
+		Silencioso:   true,
+	})
+	if err != nil {
+		t.Fatalf("Nuevo: %v", err)
+	}
+	if err := servidor.Conectar(); err != nil {
+		t.Fatalf("Conectar: %v", err)
+	}
+	defer servidor.Cerrar()
+
+	if nodos := servidor.NodosActivos(); nodos != 3 {
+		t.Errorf("se esperaban 3 nodos activos, hay %d", nodos)
+	}
+	resultado, err := servidor.Entrenar(context.Background())
+	if err != nil {
+		t.Fatalf("Entrenar con un nodo caído: %v", err)
+	}
+	ultimo := resultado.Historial[len(resultado.Historial)-1]
+	if ultimo.Nodos < 2 {
+		t.Errorf("al final quedaron %d nodos, se necesitaban al menos 2", ultimo.Nodos)
 	}
 }
 

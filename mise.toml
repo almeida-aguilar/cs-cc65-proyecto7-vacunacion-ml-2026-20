@@ -49,6 +49,22 @@ run = "go test -race ./..."
 description = "Pruebas del cluster ML (2 nodos TCP) con race y sin caché"
 run = "go test -race -count=1 ./internal/coordinador/..."
 
+[tasks."test:go"]
+description = "Todas las pruebas Go con race y sin caché"
+run = "go test -race -count=1 ./..."
+
+[tasks."test:cargador"]
+description = "Pruebas del cargador concurrente de CSV"
+run = "go test -race -count=1 ./internal/cargador/..."
+
+[tasks."test:benchmark"]
+description = "Pruebas de métricas del benchmark Go"
+run = "go test -race -count=1 ./cmd/benchmark/..."
+
+[tasks."test:entrenar"]
+description = "Pruebas del entrenamiento local y sus reportes"
+run = "go test -race -count=1 ./cmd/entrenar/..."
+
 [tasks.check]
 description = "Verificación de CI: vet + pruebas con detector de carrera"
 depends = ["vet", "test:race"]
