@@ -104,7 +104,7 @@ paths:
   /ws:
     get:
       summary: WebSocket con predicciones, progreso de entrenamiento y métricas
-      description: Requiere el encabezado `Upgrade: websocket`.
+      description: "Requiere el encabezado `Upgrade: websocket`."
       tags: [Tiempo real]
       responses:
         "101":
