@@ -77,7 +77,7 @@ func NuevoRedis(url string, opciones Opciones) (*Redis, error) {
 	configuracion.DialTimeout = opciones.TiempoEspera
 	configuracion.ReadTimeout = opciones.TiempoEspera
 	configuracion.WriteTimeout = opciones.TiempoEspera
-	configuracion.MaxRetries = -1 // sin reintentos: el cortacircuitos decide
+	configuracion.MaxRetries = -1  // sin reintentos: el cortacircuitos decide
 	configuracion.MinIdleConns = 4 // conexiones precalentadas: abrirlas en frío cuesta más que el tiempo de espera
 
 	registro := opciones.Log

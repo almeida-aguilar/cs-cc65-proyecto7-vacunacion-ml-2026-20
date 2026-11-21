@@ -1,7 +1,7 @@
 # Clúster ML de vacunación (PC4). Los valores salen de .env (copia .env.example).
 # Levantar:   docker compose up -d
 # Entrenar:   docker compose --profile entrenamiento run --rm coordinador
-# API:        docker compose --profile api up -d   (cuando exista cmd/api)
+# API:        docker compose --profile api up -d
 
 name: vacunas-ml
 
@@ -105,7 +105,7 @@ services:
       - ./reports/pc4:/app/reports/pc4
     networks: [cluster-ml]
 
-  # Nombres provisionales: ajustar al fusionar #29/#31 (la API aún no existe).
+  # API del PC4 (#29): usa MongoDB y Redis y expone el puerto configurado en .env.
   api:
     <<: *imagen-ml
     profiles: ["api"]

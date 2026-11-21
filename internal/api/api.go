@@ -562,15 +562,15 @@ type origenesPredicciones struct {
 }
 
 type infoAPI struct {
-	CacheActiva bool                 `json:"cache_activa"`
-	Origenes    origenesPredicciones `json:"origenes"`
-	Latencia             resumenLatencias `json:"latencia"`
-	ClientesWS           int              `json:"clientes_ws"`
-	PrediccionesPerdidas int64            `json:"predicciones_descartadas"`
-	Goroutines           int              `json:"goroutines"`
-	CPUs                 int              `json:"cpus"`
-	MemoriaMB            float64          `json:"memoria_mb"`
-	Segundos             float64          `json:"segundos_activo"`
+	CacheActiva          bool                 `json:"cache_activa"`
+	Origenes             origenesPredicciones `json:"origenes"`
+	Latencia             resumenLatencias     `json:"latencia"`
+	ClientesWS           int                  `json:"clientes_ws"`
+	PrediccionesPerdidas int64                `json:"predicciones_descartadas"`
+	Goroutines           int                  `json:"goroutines"`
+	CPUs                 int                  `json:"cpus"`
+	MemoriaMB            float64              `json:"memoria_mb"`
+	Segundos             float64              `json:"segundos_activo"`
 }
 
 // instantanea reúne las métricas de la API sin consultar la base de datos.
