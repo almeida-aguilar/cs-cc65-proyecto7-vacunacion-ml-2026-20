@@ -519,3 +519,204 @@ func TestPredecirAceptaElFormatoDeDatosDePrueba(t *testing.T) {
 		t.Fatalf("estado %d: %s", respuesta.Code, respuesta.Body.String())
 	}
 }
+
+// ------------------------------------------------- caché, MongoDB y pesos
+
+// cacheConFallos permite simular una caché que falla y registra lo que se guarda.
+type cacheConFallos struct {
+	mu          sync.Mutex
+	datos       map[string]*almacen.Prediccion
+	falla       bool
+	pesos       *logreg.Modelo
+	pesosID     string
+	pesosGuards int
+}
+
+func (c *cacheConFallos) Obtener(_ context.Context, hash string) (*almacen.Prediccion, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.falla {
+		return nil, fmt.Errorf("redis caído")
+	}
+	if p := c.datos[hash]; p != nil {
+		copia := *p
+		return &copia, nil
+	}
+	return nil, nil
+}
+
+func (c *cacheConFallos) Guardar(_ context.Context, p *almacen.Prediccion) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.falla {
+		return fmt.Errorf("redis caído")
+	}
+	copia := *p
+	c.datos[p.HashEntrada] = &copia
+	return nil
+}
+
+func (c *cacheConFallos) GuardarPesos(_ context.Context, modelo *logreg.Modelo, ejecucionID string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.pesos, c.pesosID = modelo, ejecucionID
+	c.pesosGuards++
+	return nil
+}
+
+func (c *cacheConFallos) ObtenerPesos(context.Context) (*logreg.Modelo, string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.pesos, c.pesosID, nil
+}
+
+func servidorConCache(t *testing.T, cache *cacheConFallos, repo almacen.Repositorio) *Servidor {
+	t.Helper()
+	servidor, err := NuevoServidor(Opciones{Cache: cache, Repo: repo, Log: silencio})
+	if err != nil {
+		t.Fatal(err)
+	}
+	modelo := logreg.NuevoModelo(2)
+	modelo.Pesos = []float64{1, 1}
+	servidor.FijarModelo(modelo, "ej-vigente")
+	return servidor
+}
+
+func origenDe(t *testing.T, respuesta *httptest.ResponseRecorder) string {
+	t.Helper()
+	var prediccion respuestaPrediccion
+	if err := json.Unmarshal(respuesta.Body.Bytes(), &prediccion); err != nil {
+		t.Fatalf("JSON inválido: %v (%s)", err, respuesta.Body.String())
+	}
+	return prediccion.Origen
+}
+
+func TestFallbackAMongoYRepoblarLaCache(t *testing.T) {
+	repo := almacen.NuevaMemoria()
+	entrada := []float64{2, 3}
+	hash := almacen.HashEntrada(entrada)
+	_ = repo.InsertarPrediccion(context.Background(), &almacen.Prediccion{
+		EjecucionID: "ej-vigente", Entrada: entrada, HashEntrada: hash,
+		Probabilidad: 0.99, Clase: 1, Umbral: 0.5, Origen: almacen.OrigenCalculo, Fecha: time.Now(),
+	})
+	cache := &cacheConFallos{datos: map[string]*almacen.Prediccion{}}
+	servidor := servidorConCache(t, cache, repo)
+	defer servidor.Cerrar()
+
+	primera := peticion(t, servidor, "POST", "/predict", `{"entrada":[2,3]}`)
+	if origen := origenDe(t, primera); origen != almacen.OrigenMongo {
+		t.Fatalf("la primera respuesta debía venir de MongoDB, origen %q", origen)
+	}
+	if cache.datos[hash] == nil {
+		t.Fatal("el acierto en MongoDB debía repoblar la caché")
+	}
+	segunda := peticion(t, servidor, "POST", "/predict", `{"entrada":[2,3]}`)
+	if origen := origenDe(t, segunda); origen != almacen.OrigenCache {
+		t.Errorf("la segunda respuesta debía venir de la caché, origen %q", origen)
+	}
+
+	var metricas respuestaMetricas
+	_ = json.Unmarshal(peticion(t, servidor, "GET", "/metrics", "").Body.Bytes(), &metricas)
+	if !metricas.API.CacheActiva || metricas.API.Origenes.MongoDB != 1 || metricas.API.Origenes.Cache != 1 {
+		t.Errorf("contadores de origen incorrectos: %+v", metricas.API)
+	}
+}
+
+func TestPrediccionDeOtroModeloNoSeSirve(t *testing.T) {
+	repo := almacen.NuevaMemoria()
+	entrada := []float64{2, 3}
+	hash := almacen.HashEntrada(entrada)
+	vieja := &almacen.Prediccion{EjecucionID: "ej-anterior", Entrada: entrada, HashEntrada: hash,
+		Probabilidad: 0.01, Clase: 0, Umbral: 0.5, Fecha: time.Now()}
+	_ = repo.InsertarPrediccion(context.Background(), vieja)
+	cache := &cacheConFallos{datos: map[string]*almacen.Prediccion{hash: vieja}}
+	servidor := servidorConCache(t, cache, repo)
+	defer servidor.Cerrar()
+
+	respuesta := peticion(t, servidor, "POST", "/predict", `{"entrada":[2,3]}`)
+	var prediccion respuestaPrediccion
+	_ = json.Unmarshal(respuesta.Body.Bytes(), &prediccion)
+	if prediccion.Origen != almacen.OrigenCalculo || prediccion.Probabilidad < 0.9 {
+		t.Errorf("debía recalcular con el modelo vigente, llegó %+v", prediccion)
+	}
+}
+
+func TestSiLaCacheFallaSeSigueRespondiendo(t *testing.T) {
+	cache := &cacheConFallos{datos: map[string]*almacen.Prediccion{}, falla: true}
+	servidor := servidorConCache(t, cache, nil)
+	defer servidor.Cerrar()
+	respuesta := peticion(t, servidor, "POST", "/predict", `{"entrada":[1,1]}`)
+	if respuesta.Code != http.StatusOK || origenDe(t, respuesta) != almacen.OrigenCalculo {
+		t.Errorf("con la caché caída debía calcular: estado %d, %s", respuesta.Code, respuesta.Body.String())
+	}
+}
+
+func TestElModeloSeRecuperaDeLaCacheAlArrancar(t *testing.T) {
+	modelo := logreg.NuevoModelo(2)
+	modelo.Pesos = []float64{2, -1}
+	cache := &cacheConFallos{datos: map[string]*almacen.Prediccion{}, pesos: modelo, pesosID: "ej-guardada"}
+	servidor, err := NuevoServidor(Opciones{Cache: cache, Log: silencio})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer servidor.Cerrar()
+	recuperado, ejecucionID := servidor.modeloActual()
+	if recuperado == nil || ejecucionID != "ej-guardada" {
+		t.Fatalf("el modelo debía recuperarse de la caché: %v, %q", recuperado, ejecucionID)
+	}
+	if respuesta := peticion(t, servidor, "POST", "/predict", `{"entrada":[1,1]}`); respuesta.Code != http.StatusOK {
+		t.Errorf("con el modelo recuperado /predict debía responder 200, estado %d", respuesta.Code)
+	}
+}
+
+func TestEntrenarGuardaLosPesosEnLaCache(t *testing.T) {
+	nodos := levantarNodos(t, 2)
+	cache := &cacheConFallos{datos: map[string]*almacen.Prediccion{}}
+	repo := almacen.NuevaMemoria()
+	servidor, err := NuevoServidor(Opciones{Cache: cache, Repo: repo, Nodos: nodos, Log: silencio})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer servidor.Cerrar()
+
+	respuesta := peticion(t, servidor, "POST", "/train", `{"epocas":3,"lote":256}`)
+	var iniciado respuestaEntrenamiento
+	_ = json.Unmarshal(respuesta.Body.Bytes(), &iniciado)
+	if respuesta.Code != http.StatusAccepted {
+		t.Fatalf("estado %d: %s", respuesta.Code, respuesta.Body.String())
+	}
+	limite := time.Now().Add(20 * time.Second)
+	for time.Now().Before(limite) {
+		cache.mu.Lock()
+		guardados := cache.pesosGuards
+		cache.mu.Unlock()
+		if guardados > 0 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	if cache.pesosGuards != 1 || cache.pesosID != iniciado.ID || cache.pesos == nil || cache.pesos.NumVariables() != 2 {
+		t.Errorf("los pesos debían guardarse una vez con el ID de la ejecución: guardados=%d id=%q", cache.pesosGuards, cache.pesosID)
+	}
+}
+
+func TestValoresPorDefectoDelEntrenamiento(t *testing.T) {
+	var vacia peticionEntrenamiento
+	vacia.valoresPorDefecto(DefectosEntrenamiento{})
+	if vacia.PesoPositivo != PesoPositivoPC3 || vacia.Epocas != 10 || vacia.Lote != 1024 || vacia.Tasa != 0.1 {
+		t.Errorf("valores de fábrica incorrectos: %+v", vacia)
+	}
+	var configurada peticionEntrenamiento
+	configurada.valoresPorDefecto(DefectosEntrenamiento{Epocas: 20, Lote: 4096, Tasa: 0.2, PesoPositivo: 5})
+	if configurada.PesoPositivo != 5 || configurada.Epocas != 20 || configurada.Lote != 4096 || configurada.Tasa != 0.2 {
+		t.Errorf("no se respetaron los valores configurados: %+v", configurada)
+	}
+	explicita := peticionEntrenamiento{Epocas: 3, PesoPositivo: 2}
+	explicita.valoresPorDefecto(DefectosEntrenamiento{Epocas: 20, PesoPositivo: 5})
+	if explicita.Epocas != 3 || explicita.PesoPositivo != 2 {
+		t.Errorf("la petición debe tener prioridad sobre los valores por defecto: %+v", explicita)
+	}
+}

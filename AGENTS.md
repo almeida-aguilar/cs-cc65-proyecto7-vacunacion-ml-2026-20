@@ -25,8 +25,8 @@ sí está implementado** en `internal/coordinador` y `cmd/coordinador` (PC4, ver
 `docs/protocolo_pc4.md`). La API REST/WebSocket está implementada en `internal/api` y `cmd/api`
 (ver `docs/api.md`). MongoDB está implementado como repositorio (`internal/almacen`, ver
 `docs/base_de_datos.md`). Docker Compose existe (`Dockerfile`, `docker-compose.yml`,
-`docs/docker_pc4.md`: Mongo, Redis y 2 nodos ML; la API se levanta con el perfil `api`). El servicio
-Redis ya está en Compose, pero la caché (#31) y la SPA **todavía no están implementadas**; no las des
+`docs/docker_pc4.md`: Mongo, Redis y 2 nodos ML; la API se levanta con el perfil `api`). La caché Redis
+(#31) está implementada en `internal/cache` (ver `docs/redis.md`); la SPA **todavía no está implementada**; no la des
 como existentes. La documentación vigente de la Parte A es
 `reports/informe_limpieza_y_analisis.md`; el resumen con la muestra por filas
 quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
@@ -66,6 +66,7 @@ quedó corregido al final de `docs/resumen_del_proyecto_y_preprocesamiento.md`.
 | `internal/api/` | API HTTP: `/health`, `/predict`, `/train`, `/metrics`, `/docs`, `/ws` + tests (ver `docs/api.md`). |
 | `cmd/api/` | Ejecutable de la API (flags o variables de entorno `NODOS`, `MONGO_URI`, `MONGO_BASE`, `PUERTO_API`, `MODELO`). |
 | `cmd/latencia/`, `cmd/escalamiento/` | Evidencias PC4: latencia de `/predict` y escalamiento con 1, 2 y 4 nodos (ver `reports/pc4/README.md`). |
+| `internal/cache/` | Caché Redis (`api.Cache`/`CachePesos`): predicciones y pesos con TTL, cortacircuitos + tests con miniredis (ver `docs/redis.md`). |
 | `internal/almacen/` | Entidades y repositorio de datos (MongoDB y memoria) + tests. |
 | `cmd/seed/` | Inserta registros de prueba en MongoDB. |
 | `internal/coordinador/` | Parameter server del clúster ML + tests con 2 nodos TCP. |

@@ -37,6 +37,27 @@ type Cache interface {
 	Guardar(ctx context.Context, prediccion *almacen.Prediccion) error
 }
 
+// CachePesos es la parte opcional de la caché que guarda el modelo vigente
+// (pesos globales). Si la Cache la implementa, la API guarda el modelo al
+// terminar cada entrenamiento y lo recupera al arrancar sin modelo.
+type CachePesos interface {
+	GuardarPesos(ctx context.Context, modelo *logreg.Modelo, ejecucionID string) error
+	ObtenerPesos(ctx context.Context) (*logreg.Modelo, string, error)
+}
+
+// PesoPositivoPC3 es el peso de la clase positiva con el que se entrenó el
+// modelo del PC3 (negativos/positivos del conjunto de entrenamiento).
+const PesoPositivoPC3 = 12.43
+
+// DefectosEntrenamiento son los hiperparámetros de POST /train cuando la
+// petición no los indica. Los valores en cero usan los de fábrica.
+type DefectosEntrenamiento struct {
+	Epocas       int
+	Lote         int
+	Tasa         float64
+	PesoPositivo float64
+}
+
 // Opciones configura el servidor de la API.
 type Opciones struct {
 	// RutaModelo es el JSON del modelo: se carga al iniciar si existe y se
@@ -46,8 +67,10 @@ type Opciones struct {
 	Nodos []string
 	// Repo persiste ejecuciones, métricas y predicciones. Nil usa memoria.
 	Repo almacen.Repositorio
-	// Cache es opcional (Redis).
+	// Cache es opcional (Redis). Si además implementa CachePesos, guarda el modelo.
 	Cache Cache
+	// Entrenamiento fija los valores por defecto de POST /train.
+	Entrenamiento DefectosEntrenamiento
 	// Log recibe los mensajes de diagnóstico; nil usa log.Printf.
 	Log func(formato string, valores ...any)
 }
@@ -67,6 +90,7 @@ type Servidor struct {
 
 	cola        chan almacen.Prediccion // predicciones por guardar (no bloquea /predict)
 	descartadas atomic.Int64
+	origenes    [3]atomic.Int64 // predicciones por origen: cálculo, caché, MongoDB
 	entrenando  atomic.Bool
 	latencias   ventanaLatencias
 	hub         *hub
@@ -115,9 +139,30 @@ func NuevoServidor(opciones Opciones) (*Servidor, error) {
 		}
 	}
 
+	servidor.restaurarModeloDesdeCache()
 	servidor.trabajos.Add(1)
 	go servidor.persistirPredicciones()
 	return servidor, nil
+}
+
+// restaurarModeloDesdeCache recupera los pesos guardados en la caché cuando no
+// se cargó ningún modelo desde archivo (p. ej. tras reiniciar el contenedor).
+func (s *Servidor) restaurarModeloDesdeCache() {
+	pesos, ok := s.opciones.Cache.(CachePesos)
+	if !ok || s.modelo != nil {
+		return
+	}
+	ctx, cancelar := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelar()
+	modelo, ejecucionID, err := pesos.ObtenerPesos(ctx)
+	if err != nil {
+		s.log("no se pudo recuperar el modelo de la caché: %v", err)
+		return
+	}
+	if modelo != nil {
+		s.modelo, s.ejecucionModelo = modelo, ejecucionID
+		s.log("modelo recuperado de la caché (ejecución %s, %d variables)", ejecucionID, modelo.NumVariables())
+	}
 }
 
 // FijarModelo reemplaza el modelo vigente (usado tras entrenar y en pruebas).
@@ -347,13 +392,9 @@ func (s *Servidor) predecir(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hash := almacen.HashEntrada(peticion.Entrada)
-	if s.opciones.Cache != nil {
-		if acierto, err := s.opciones.Cache.Obtener(r.Context(), hash); err != nil {
-			s.log("la caché falló, se calcula la predicción: %v", err)
-		} else if acierto != nil {
-			s.responderPrediccion(w, inicio, acierto.Probabilidad, acierto.Clase, acierto.Umbral, almacen.OrigenCache, acierto.EjecucionID)
-			return
-		}
+	if previa := s.buscarPrevia(r.Context(), hash, ejecucionID); previa != nil {
+		s.responderPrediccion(w, inicio, previa.Probabilidad, previa.Clase, previa.Umbral, previa.Origen, previa.EjecucionID)
+		return
 	}
 
 	probabilidad, err := modelo.Probabilidad(peticion.Entrada)
@@ -371,6 +412,53 @@ func (s *Servidor) predecir(w http.ResponseWriter, r *http.Request) {
 		Probabilidad: probabilidad, Clase: clase, Umbral: modelo.Umbral,
 		LatenciaMs: latencia, Origen: almacen.OrigenCalculo, Fecha: time.Now().UTC(),
 	})
+}
+
+// buscarPrevia busca una predicción ya calculada para la misma entrada: primero
+// en la caché (Redis) y, si no está, en MongoDB (fallback). Solo sirve las del
+// modelo vigente: tras reentrenar, las anteriores se ignoran. Si hay un acierto
+// en MongoDB se vuelve a guardar en la caché. Los fallos de Redis o de MongoDB
+// se registran y nunca impiden calcular la predicción.
+func (s *Servidor) buscarPrevia(ctx context.Context, hash, ejecucionID string) *almacen.Prediccion {
+	if s.opciones.Cache == nil {
+		return nil
+	}
+	acierto, err := s.opciones.Cache.Obtener(ctx, hash)
+	if err != nil {
+		s.log("la caché falló, se consulta MongoDB: %v", err)
+	}
+	if acierto != nil && acierto.EjecucionID == ejecucionID {
+		acierto.Origen = almacen.OrigenCache
+		return acierto
+	}
+
+	guardada, err := s.repo.PrediccionPorHash(ctx, hash)
+	switch {
+	case errors.Is(err, almacen.ErrNoEncontrado):
+		return nil
+	case err != nil:
+		s.log("el fallback a MongoDB falló, se calcula la predicción: %v", err)
+		return nil
+	case guardada.EjecucionID != ejecucionID:
+		return nil
+	}
+	guardada.Origen = almacen.OrigenMongo
+	if err := s.opciones.Cache.Guardar(ctx, guardada); err != nil {
+		s.log("no se pudo repoblar la caché: %v", err)
+	}
+	return guardada
+}
+
+// contarOrigen suma n predicciones al contador del origen indicado.
+func (s *Servidor) contarOrigen(origen string, n int64) {
+	switch origen {
+	case almacen.OrigenCache:
+		s.origenes[1].Add(n)
+	case almacen.OrigenMongo:
+		s.origenes[2].Add(n)
+	default:
+		s.origenes[0].Add(n)
+	}
 }
 
 // encolar envía la predicción a la cola de persistencia sin bloquear: si la
@@ -410,6 +498,7 @@ func (s *Servidor) predecirLote(w http.ResponseWriter, inicio time.Time, modelo 
 	}
 	respuesta.LatenciaMs = milisegundos(time.Since(inicio))
 	s.latencias.registrar(respuesta.LatenciaMs)
+	s.contarOrigen(almacen.OrigenCalculo, int64(len(filas)))
 	responder(w, http.StatusOK, respuesta, inicio)
 	s.hub.publicar("prediccion_lote", map[string]any{
 		"total": respuesta.Total, "positivas": respuesta.Positivas,
@@ -435,6 +524,7 @@ func (s *Servidor) responderPrediccion(w http.ResponseWriter, inicio time.Time, 
 		LatenciaMs: latencia, Origen: origen, EjecucionID: ejecucionID,
 	}
 	s.latencias.registrar(latencia)
+	s.contarOrigen(origen, 1)
 	responder(w, http.StatusOK, respuesta, inicio)
 	s.hub.publicar("prediccion", respuesta)
 	return latencia
@@ -464,7 +554,16 @@ type infoCluster struct {
 	Entrenando        bool     `json:"entrenando"`
 }
 
+// origenesPredicciones cuenta de dónde salió cada predicción servida.
+type origenesPredicciones struct {
+	Calculadas int64 `json:"calculadas"`
+	Cache      int64 `json:"cache"`
+	MongoDB    int64 `json:"mongo"`
+}
+
 type infoAPI struct {
+	CacheActiva bool                 `json:"cache_activa"`
+	Origenes    origenesPredicciones `json:"origenes"`
 	Latencia             resumenLatencias `json:"latencia"`
 	ClientesWS           int              `json:"clientes_ws"`
 	PrediccionesPerdidas int64            `json:"predicciones_descartadas"`
@@ -479,6 +578,10 @@ func (s *Servidor) instantanea() infoAPI {
 	var memoria runtime.MemStats
 	runtime.ReadMemStats(&memoria)
 	return infoAPI{
+		CacheActiva: s.opciones.Cache != nil,
+		Origenes: origenesPredicciones{
+			Calculadas: s.origenes[0].Load(), Cache: s.origenes[1].Load(), MongoDB: s.origenes[2].Load(),
+		},
 		Latencia:             s.latencias.resumen(),
 		ClientesWS:           s.hub.clientes(),
 		PrediccionesPerdidas: s.descartadas.Load(),
