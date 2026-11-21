@@ -1,0 +1,115 @@
+$ go test -race -count=1 -v ./...
+=== RUN   TestMediana
+--- PASS: TestMediana (0.00s)
+=== RUN   TestCalcularListaWorkers
+--- PASS: TestCalcularListaWorkers (0.00s)
+=== RUN   TestCalcularSpeedup
+--- PASS: TestCalcularSpeedup (0.00s)
+=== RUN   TestDiferenciaRelativa
+--- PASS: TestDiferenciaRelativa (0.00s)
+=== RUN   TestNuevaMedicionUsaPrimeraComoBase
+--- PASS: TestNuevaMedicionUsaPrimeraComoBase (0.00s)
+PASS
+ok  	github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/cmd/benchmark	1.164s
+=== RUN   TestGuardarReporte
+--- PASS: TestGuardarReporte (0.01s)
+PASS
+ok  	github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/cmd/coordinador	1.211s
+=== RUN   TestMismasColumnas
+--- PASS: TestMismasColumnas (0.00s)
+=== RUN   TestGuardarReportes
+Reportes guardados en C:\Users\franz\AppData\Local\Temp\TestGuardarReportes3783595216\001\prueba_metricas.json y C:\Users\franz\AppData\Local\Temp\TestGuardarReportes3783595216\001\prueba_historial.csv
+--- PASS: TestGuardarReportes (0.02s)
+PASS
+ok  	github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/cmd/entrenar	1.213s
+=== RUN   TestEscalamientoMismaPerdida
+--- PASS: TestEscalamientoMismaPerdida (0.03s)
+=== RUN   TestVerificarPerdidasDetectaDiferencia
+--- PASS: TestVerificarPerdidasDetectaDiferencia (0.00s)
+=== RUN   TestEscribirCSV
+--- PASS: TestEscribirCSV (0.12s)
+PASS
+ok  	github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/cmd/escalamiento	1.373s
+?   	github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/cmd/seed	[no test files]
+?   	github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/internal	[no test files]
+=== RUN   TestMedirContraServidor
+--- PASS: TestMedirContraServidor (0.21s)
+=== RUN   TestResumirNoCumpleSiHayErrores
+--- PASS: TestResumirNoCumpleSiHayErrores (0.00s)
+=== RUN   TestResumirNoCumpleSiEsLento
+--- PASS: TestResumirNoCumpleSiEsLento (0.00s)
+=== RUN   TestPercentil
+--- PASS: TestPercentil (0.00s)
+=== RUN   TestMedirServidorCaido
+--- PASS: TestMedirServidorCaido (0.00s)
+PASS
+ok  	github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/cmd/latencia	1.554s
+=== RUN   TestNuevoNodoDesdeCSV
+--- PASS: TestNuevoNodoDesdeCSV (0.01s)
+=== RUN   TestDosNodosIgualQueUnWorker
+    main_test.go:137: época | pérdida 2 nodos | pérdida 1 worker
+    main_test.go:139:     1 | 0.693147181      | 0.693147181
+    main_test.go:139:     2 | 0.664194873      | 0.664194873
+    main_test.go:139:     3 | 0.641902947      | 0.641902947
+    main_test.go:139:     4 | 0.624627494      | 0.624627494
+    main_test.go:139:     5 | 0.611114200      | 0.611114200
+    main_test.go:139:     6 | 0.600432988      | 0.600432988
+--- PASS: TestDosNodosIgualQueUnWorker (0.04s)
+PASS
+ok  	github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/cmd/nodo	1.236s
+=== RUN   TestEjecucionInsertarObtenerActualizar
+=== RUN   TestEjecucionInsertarObtenerActualizar/memoria
+--- PASS: TestEjecucionInsertarObtenerActualizar (0.00s)
+    --- PASS: TestEjecucionInsertarObtenerActualizar/memoria (0.00s)
+=== RUN   TestEjecucionNoEncontrada
+=== RUN   TestEjecucionNoEncontrada/memoria
+--- PASS: TestEjecucionNoEncontrada (0.00s)
+    --- PASS: TestEjecucionNoEncontrada/memoria (0.00s)
+=== RUN   TestUltimasEjecucionesOrdenYLimite
+=== RUN   TestUltimasEjecucionesOrdenYLimite/memoria
+--- PASS: TestUltimasEjecucionesOrdenYLimite (0.00s)
+    --- PASS: TestUltimasEjecucionesOrdenYLimite/memoria (0.00s)
+=== RUN   TestMetricasOrdenadasPorEpocaYUnicas
+=== RUN   TestMetricasOrdenadasPorEpocaYUnicas/memoria
+--- PASS: TestMetricasOrdenadasPorEpocaYUnicas (0.00s)
+    --- PASS: TestMetricasOrdenadasPorEpocaYUnicas/memoria (0.00s)
+=== RUN   TestPrediccionPorHash
+=== RUN   TestPrediccionPorHash/memoria
+--- PASS: TestPrediccionPorHash (0.00s)
+    --- PASS: TestPrediccionPorHash/memoria (0.00s)
+=== RUN   TestInsercionesConcurrentes
+=== RUN   TestInsercionesConcurrentes/memoria
+--- PASS: TestInsercionesConcurrentes (0.00s)
+    --- PASS: TestInsercionesConcurrentes/memoria (0.00s)
+=== RUN   TestHashEntrada
+--- PASS: TestHashEntrada (0.00s)
+PASS
+ok  	github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/internal/almacen	1.443s
+=== RUN   TestCargaCorrecta
+--- PASS: TestCargaCorrecta (0.01s)
+=== RUN   TestFinalesDeLineaWindowsYBOM
+--- PASS: TestFinalesDeLineaWindowsYBOM (0.01s)
+=== RUN   TestFilasMalasSeRechazan
+--- PASS: TestFilasMalasSeRechazan (0.01s)
+=== RUN   TestMismoResultadoConUnoYOchoWorkers
+--- PASS: TestMismoResultadoConUnoYOchoWorkers (0.12s)
+=== RUN   TestExcluir
+--- PASS: TestExcluir (0.01s)
+=== RUN   TestMaxFilas
+--- PASS: TestMaxFilas (0.07s)
+=== RUN   TestArchivoInexistenteYVacio
+--- PASS: TestArchivoInexistenteYVacio (0.00s)
+PASS
+ok  	github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/internal/cargador	1.383s
+=== RUN   TestParameterServerConDosNodos
+--- PASS: TestParameterServerConDosNodos (0.02s)
+=== RUN   TestParameterServerIgualQueEntrenamientoLocal
+--- PASS: TestParameterServerIgualQueEntrenamientoLocal (0.02s)
+=== RUN   TestParameterServerToleraNodoInactivo
+--- PASS: TestParameterServerToleraNodoInactivo (0.01s)
+=== RUN   TestNuevoRechazaOpcionesInvalidas
+--- PASS: TestNuevoRechazaOpcionesInvalidas (0.00s)
+PASS
+ok  	github.com/almeida-aguilar/cs-cc65-proyecto7-vacunacion-ml-2026-20/internal/coordinador	1.246s
+
+código de salida: 0

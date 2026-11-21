@@ -1,0 +1,34 @@
+nodo1-1  | Nodo nodo-1 | filas válidas 10000 | rechazadas 0 | variables 50 | carga 38ms
+nodo2-1  | Nodo nodo-2 | filas válidas 10000 | rechazadas 0 | variables 50 | carga 39ms
+nodo2-1  | Variables: [edad dias_desde_inicio te_provincia te_distrito edad_imputada sexo_masculino zona_rural pct_rural_provincia mes_sin mes_cos ge_0-4 ge_5-11 ge_12-17 ge_18-29 ge_30-39 ge_40-49 ge_50-59 ge_60-69 ge_70+ fab_PFIZER fab_SINOPHARM fab_ASTRAZENECA fab_MODERNA fab_DESCONOCIDO fab_OTRO dep_AMAZONAS dep_ANCASH dep_APURIMAC dep_AREQUIPA dep_AYACUCHO dep_CAJAMARCA dep_CALLAO dep_CUSCO dep_HUANCAVELICA dep_HUANUCO dep_ICA dep_JUNIN dep_LA_LIBERTAD dep_LAMBAYEQUE dep_LIMA dep_LORETO dep_MADRE_DE_DIOS dep_MOQUEGUA dep_PASCO dep_PIURA dep_PUNO dep_SAN_MARTIN dep_TACNA dep_TUMBES dep_UCAYALI]
+nodo2-1  | Excluidas: []
+nodo2-1  | Escuchando en :9001. Esperando peticiones del coordinador (Ctrl+C para detener).
+nodo2-1  | [16:34:02.361 nodo-2] [nodo nodo-2] escuchando en [::]:9001 con 10000 filas
+nodo1-1  | Variables: [edad dias_desde_inicio te_provincia te_distrito edad_imputada sexo_masculino zona_rural pct_rural_provincia mes_sin mes_cos ge_0-4 ge_5-11 ge_12-17 ge_18-29 ge_30-39 ge_40-49 ge_50-59 ge_60-69 ge_70+ fab_PFIZER fab_SINOPHARM fab_ASTRAZENECA fab_MODERNA fab_DESCONOCIDO fab_OTRO dep_AMAZONAS dep_ANCASH dep_APURIMAC dep_AREQUIPA dep_AYACUCHO dep_CAJAMARCA dep_CALLAO dep_CUSCO dep_HUANCAVELICA dep_HUANUCO dep_ICA dep_JUNIN dep_LA_LIBERTAD dep_LAMBAYEQUE dep_LIMA dep_LORETO dep_MADRE_DE_DIOS dep_MOQUEGUA dep_PASCO dep_PIURA dep_PUNO dep_SAN_MARTIN dep_TACNA dep_TUMBES dep_UCAYALI]
+nodo1-1  | Excluidas: []
+nodo2-1  | [16:34:12.029 nodo-2] [nodo nodo-2] configurado: 10000 filas escaladas
+nodo1-1  | Escuchando en :9001. Esperando peticiones del coordinador (Ctrl+C para detener).
+nodo1-1  | [16:34:02.303 nodo-1] [nodo nodo-1] escuchando en [::]:9001 con 10000 filas
+nodo1-1  | [16:34:12.029 nodo-1] [nodo nodo-1] configurado: 10000 filas escaladas
+--- coordinador (mise run docker:entrenar) ---
+[docker:entrenar] $ docker compose --profile entrenamiento run --rm coordinador
+ Container vacunas-ml-nodo1-1  Running
+ Container vacunas-ml-nodo2-1  Running
+Conectando con los nodos...
+2026/11/20 16:34:12 [coordinador] conectado a nodo2:9001 (nodo-2): 10000 filas
+2026/11/20 16:34:12 [coordinador] conectado a nodo1:9001 (nodo-1): 10000 filas
+Nodos activos: 2 | filas totales: 20000
+Entrenando de forma distribuida...
+Epoca  1 | pérdida 0.5961 | nodos 2 | 5ms
+Epoca  2 | pérdida 0.5277 | nodos 2 | 6ms
+Epoca  3 | pérdida 0.5080 | nodos 2 | 5ms
+Epoca  4 | pérdida 0.4963 | nodos 2 | 7ms
+Epoca  5 | pérdida 0.4876 | nodos 2 | 5ms
+Epoca  6 | pérdida 0.4809 | nodos 2 | 6ms
+Epoca  7 | pérdida 0.4760 | nodos 2 | 5ms
+Epoca  8 | pérdida 0.4720 | nodos 2 | 5ms
+Epoca  9 | pérdida 0.4687 | nodos 2 | 5ms
+Epoca 10 | pérdida 0.4660 | nodos 2 | 5ms
+Evaluando en los nodos...
+Exactitud 0.7543 | F1 0.3365 | pérdida 0.5145
+Modelo guardado en /app/reports/pc4/modelo_docker.json

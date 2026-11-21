@@ -1,0 +1,6 @@
+NAME                 IMAGE              COMMAND                  SERVICE   CREATED          STATUS                     PORTS
+vacunas-ml-mongo-1   mongo:7            "docker-entrypoint.s…"   mongo     7 minutes ago    Up 7 minutes (healthy)     0.0.0.0:27018->27017/tcp, [::]:27018->27017/tcp
+vacunas-ml-nodo1-1   vacunas-ml:local   "/app/bin/nodo -serv…"   nodo1     13 seconds ago   Up 11 seconds (healthy)    8080/tcp, 9001/tcp
+vacunas-ml-nodo2-1   vacunas-ml:local   "/app/bin/nodo -serv…"   nodo2     13 seconds ago   Up 12 seconds (healthy)    8080/tcp, 9001/tcp
+vacunas-ml-redis-1   redis:7-alpine     "docker-entrypoint.s…"   redis     7 minutes ago    Up 7 minutes (healthy)     0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+vacunas-ml-seed-1    vacunas-ml:local   "/app/bin/seed -mong…"   seed      7 minutes ago    Exited (0) 7 minutes ago   

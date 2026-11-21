@@ -1,0 +1,249 @@
+# mise: gestor de herramientas y orquestador de tareas del proyecto.
+# Las versiones exactas se congelan en mise.lock (committearlo).
+min_version = { soft = "2026.7.0" }
+
+[tools]
+go = "1.22"
+python = "3.12"
+
+[settings]
+lockfile = true
+python.venv_stdlib = true # .venv con pip (no uv), para `python -m pip install`
+
+[env]
+_.python.venv = { path = ".venv", create = true }
+
+# ---------------------------------------------------------------------------
+# Instalación y verificación
+# ---------------------------------------------------------------------------
+
+[tasks.setup]
+description = "Instala dependencias de Go y Python (ejecutar tras mise install)"
+depends = ["deps:go", "deps:python"]
+
+[tasks."deps:go"]
+description = "Descarga los módulos Go declarados en go.mod"
+run = "go mod download"
+
+[tasks."deps:python"]
+description = "Instala requirements.txt dentro de .venv"
+run = "python -m pip install -r requirements.txt"
+
+[tasks.fmt]
+description = "Formatea el código Go con gofmt"
+run = "gofmt -w ./cmd ./internal"
+
+[tasks.vet]
+description = "Análisis estático del código Go"
+run = "go vet ./..."
+
+[tasks.test]
+description = "Pruebas Go (sin detector de carrera)"
+run = "go test ./..."
+
+[tasks."test:race"]
+description = "Pruebas Go con detector de carrera"
+run = "go test -race ./..."
+
+[tasks."test:cluster"]
+description = "Pruebas del cluster ML (2 nodos TCP) con race y sin caché"
+run = "go test -race -count=1 ./internal/coordinador/..."
+
+[tasks."test:go"]
+description = "Todas las pruebas Go con race y sin caché"
+run = "go test -race -count=1 ./..."
+
+[tasks."test:cargador"]
+description = "Pruebas del cargador concurrente de CSV"
+run = "go test -race -count=1 ./internal/cargador/..."
+
+[tasks."test:benchmark"]
+description = "Pruebas de métricas del benchmark Go"
+run = "go test -race -count=1 ./cmd/benchmark/..."
+
+[tasks."test:entrenar"]
+description = "Pruebas del entrenamiento local y sus reportes"
+run = "go test -race -count=1 ./cmd/entrenar/..."
+
+[tasks."test:nodo"]
+description = "Pruebas del nodo ML y equivalencia 2 nodos vs 1 worker"
+run = "go test -race -count=1 ./cmd/nodo/..."
+
+[tasks."test:almacen"]
+description = "Pruebas del repositorio de datos (memoria; con Mongo real si MONGO_URI está definida)"
+run = "go test -race -count=1 ./internal/almacen/..."
+
+[tasks."test:almacen:mongo"]
+description = "Pruebas del repositorio contra MongoDB real en localhost (requiere db:up)"
+env = { MONGO_URI = "mongodb://localhost:27017" }
+run = "go test -race -count=1 -v ./internal/almacen/..."
+
+[tasks.check]
+description = "Verificación de CI: vet + pruebas con detector de carrera"
+depends = ["vet", "test:race"]
+
+# ---------------------------------------------------------------------------
+# Parte A: pipeline de datos (ejecutar siempre desde la raíz del repo)
+# ---------------------------------------------------------------------------
+
+[tasks."data:extraer"]
+description = "zip -> 7z -> CSV original (acepta los flags de 00_extraer.py)"
+raw_args = true
+run = "python src/00_extraer.py"
+
+[tasks."data:cargar"]
+description = "Carga concurrente MAP + REDUCE (acepta flags de loader_concurrente.py)"
+raw_args = true
+run = "python src/loader_concurrente.py"
+
+[tasks."data:construir"]
+description = "Construye el dataset de entrenamiento (acepta flags de construir_dataset.py)"
+raw_args = true
+run = "python src/construir_dataset.py"
+
+[tasks."data:exportar"]
+description = "Genera los CSV numéricos que consume Go en data/modelo/"
+run = "python src/exportar_para_modelo.py"
+
+[tasks."data:eda"]
+description = "Genera tablas y figuras del análisis exploratorio"
+run = "python src/analisis_eda.py"
+
+[tasks."data:bench"]
+description = "Mide el speedup del MAP en Python (1..12 workers)"
+run = "python src/benchmark_workers.py"
+
+[tasks."data:figuras"]
+description = "Regenera la figura del benchmark de Go"
+run = "python src/grafica_benchmark.py reports/go/benchmark_workers_go.csv reports/figuras/21_benchmark_go.png"
+
+[tasks.pipeline]
+description = "Pipeline de datos completo, en orden (requiere el zip y la tabla de ruralidad)"
+run = [
+  { task = "deps:python" },
+  { task = "data:extraer" },
+  { task = "data:cargar" },
+  { task = "data:construir" },
+  { task = "data:exportar" },
+  { task = "data:eda" },
+]
+
+# ---------------------------------------------------------------------------
+# Parte B: entrenamiento y benchmark en Go
+# ---------------------------------------------------------------------------
+
+[tasks.train]
+description = "Entrena el modelo (acepta los flags de cmd/entrenar)"
+raw_args = true
+run = "go run ./cmd/entrenar"
+
+[tasks."train:prueba"]
+description = "Entrenamiento corto con -nombre prueba (no sobrescribe reportes reales)"
+run = "go run ./cmd/entrenar -nombre prueba -max-filas 10000"
+
+[tasks.bench]
+description = "Benchmark de paralelización (acepta los flags de cmd/benchmark)"
+raw_args = true
+run = "go run ./cmd/benchmark"
+
+[tasks."bench:prueba"]
+description = "Benchmark corto con salida reports/go/prueba_benchmark.csv"
+run = "go run ./cmd/benchmark -max-filas 10000 -salida reports/go/prueba_benchmark.csv"
+
+[tasks.reportes]
+description = "Regenera el benchmark de Go, su figura y el EDA (tarea pesada)"
+run = [
+  { task = "bench" },
+  { task = "data:figuras" },
+  { task = "data:eda" },
+]
+
+# ---------------------------------------------------------------------------
+# Base de datos (PC4): MongoDB local en Docker
+# ---------------------------------------------------------------------------
+
+[tasks."db:up"]
+description = "Levanta MongoDB 7 en Docker (puerto 27017, volumen vacunas-mongo)"
+run = "docker run -d --name vacunas-mongo -p 27017:27017 -v vacunas-mongo:/data/db mongo:7"
+
+[tasks."db:down"]
+description = "Detiene y elimina el contenedor de MongoDB (el volumen se conserva)"
+run = "docker rm -f vacunas-mongo"
+
+[tasks."db:seed"]
+description = "Inserta registros de prueba en MongoDB (acepta los flags de cmd/seed)"
+raw_args = true
+run = "go run ./cmd/seed"
+
+# ---------------------------------------------------------------------------
+# API (PC4)
+# ---------------------------------------------------------------------------
+
+[tasks.api]
+description = "Levanta la API en :8080 (acepta flags de cmd/api, p. ej. -nodos a:9001,b:9002 -mongo mongodb://localhost:27017)"
+raw_args = true
+run = "go run ./cmd/api"
+
+[tasks."test:api"]
+description = "Pruebas de la API: endpoints, WebSocket y entrenamiento con 2 nodos TCP (-race)"
+run = "go test -race -count=1 ./internal/api/..."
+
+[tasks."test:cache"]
+description = "Pruebas de la caché Redis (miniredis; con REDIS_URL usa un Redis real) (-race)"
+run = "go test -race -count=1 ./internal/cache/..."
+
+# ---------------------------------------------------------------------------
+# Evidencias (PC4)
+# ---------------------------------------------------------------------------
+
+[tasks."data:prueba"]
+description = "Genera data/prueba/nodo1.csv, nodo2.csv y predicciones.json (acepta --filas, --fragmentos)"
+raw_args = true
+run = "python src/generar_datos_prueba.py"
+
+[tasks."pc4:escalamiento"]
+description = "Entrena con 1, 2 y 4 nodos TCP locales y guarda reports/pc4/escalamiento_cluster.csv (acepta los flags de cmd/escalamiento)"
+raw_args = true
+run = "go run ./cmd/escalamiento"
+
+[tasks."pc4:latencia"]
+description = "Mide la latencia de /predict (API levantada) y guarda reports/pc4/latencia_*.{csv,json} (acepta los flags de cmd/latencia)"
+raw_args = true
+run = "go run ./cmd/latencia"
+
+[tasks."pc4:race"]
+description = "Ejecuta go test -race -count=1 -v ./... y guarda la salida en reports/pc4/race_test.txt"
+run = "python src/ejecutar_race.py"
+
+# ---------------------------------------------------------------------------
+# Docker (PC4): clúster completo con Docker Compose
+# ---------------------------------------------------------------------------
+
+[tasks."docker:build"]
+description = "Construye la imagen única del clúster (nodos, coordinador, seed)"
+run = "docker compose build"
+
+[tasks."docker:up"]
+description = "Levanta MongoDB (con semilla), Redis y 2 nodos ML en segundo plano"
+run = "docker compose up -d"
+
+[tasks."docker:ps"]
+description = "Muestra el estado de los servicios de Compose"
+run = "docker compose ps -a"
+
+[tasks."docker:logs"]
+description = "Muestra los logs de Compose (acepta servicios, ej. nodo1)"
+raw_args = true
+run = "docker compose logs"
+
+[tasks."docker:entrenar"]
+description = "Entrena distribuido contra los nodos de Docker (reports/pc4/docker_*)"
+run = "docker compose --profile entrenamiento run --rm coordinador"
+
+[tasks."docker:mongo"]
+description = "Abre mongosh dentro del contenedor, base vacunas_prueba"
+run = "docker compose exec mongo mongosh vacunas_prueba"
+
+[tasks."docker:down"]
+description = "Detiene y elimina los contenedores de Compose (los volúmenes se conservan)"
+run = "docker compose --profile entrenamiento --profile api down"

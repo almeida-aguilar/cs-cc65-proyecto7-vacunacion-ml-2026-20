@@ -1,0 +1,203 @@
+openapi: 3.0.3
+info:
+  title: API de deserción de segundas dosis (COVID-19)
+  version: 1.0.0
+  description: |
+    Coordinador del clúster de nodos ML. Expone el modelo de regresión logística
+    distribuida (parameter server por TCP) y persiste resultados en MongoDB.
+
+    **Autenticación:** esta versión (PC4) no exige JWT; se implementará junto con
+    el inicio de sesión de la SPA en el entregable 3 (TB2).
+    **WebSocket:** `GET /ws` (esquema `ws://`) envía eventos JSON con la forma
+    `{"tipo": "...", "fecha": "...", "datos": {...}}`. Tipos: `conectado`,
+    `prediccion`, `prediccion_lote`, `inicio`, `progreso`, `fin`, `error`, `metricas`.
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      summary: Estado del servicio
+      tags: [Sistema]
+      responses:
+        "200":
+          description: Servicio activo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Salud" }
+  /predict:
+    post:
+      summary: Predice la probabilidad de deserción de la segunda dosis (una persona o un lote)
+      description: |
+        Envía **una persona** (`entrada`) o **varias** (`filas`, máximo 1000), nunca ambas.
+        Cada vector debe tener tantas variables como el modelo (ver `variables` en
+        `/health`), en el orden de `data/modelo/columnas.json` y sin escalar.
+        `columnas` es opcional: si se envía, debe tener tantos nombres como variables.
+        Con `filas` la respuesta es un lote (`predicciones`, en el mismo orden); no usa la caché.
+      tags: [Predicción]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PeticionPrediccion" }
+      responses:
+        "200":
+          description: Predicción calculada o servida desde la caché (`entrada`), o lote de predicciones (`filas`)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Prediccion"
+                  - $ref: "#/components/schemas/PrediccionLote"
+        "400":
+          description: JSON inválido, cantidad de variables incorrecta, lote vacío o demasiado grande, o se enviaron `entrada` y `filas` a la vez
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: No hay un modelo cargado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /train:
+    post:
+      summary: Entrena el modelo de forma distribuida en los nodos ML
+      description: |
+        Inicia el entrenamiento en segundo plano y responde de inmediato. El
+        progreso llega por `/ws` y el resultado final por `/metrics`.
+      tags: [Entrenamiento]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PeticionEntrenamiento" }
+      responses:
+        "202":
+          description: Entrenamiento aceptado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entrenamiento" }
+        "400":
+          description: Hiperparámetros inválidos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Ya hay un entrenamiento en curso
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: No hay nodos ML configurados
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /metrics:
+    get:
+      summary: Métricas del modelo, del clúster y de la API
+      tags: [Sistema]
+      responses:
+        "200":
+          description: Métricas actuales
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Metricas" }
+  /ws:
+    get:
+      summary: WebSocket con predicciones, progreso de entrenamiento y métricas
+      description: Requiere el encabezado `Upgrade: websocket`.
+      tags: [Tiempo real]
+      responses:
+        "101":
+          description: Cambio de protocolo a WebSocket
+  /docs:
+    get:
+      summary: Esta documentación (Swagger UI)
+      tags: [Sistema]
+      responses:
+        "200":
+          description: Página HTML
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string, example: "se esperaban 50 variables en \"entrada\", llegaron 3" }
+    Salud:
+      type: object
+      properties:
+        estado: { type: string, example: ok }
+        modelo_cargado: { type: boolean }
+        variables: { type: integer, example: 50 }
+        umbral: { type: number, example: 0.48 }
+        nodos_configurados: { type: integer, example: 2 }
+        entrenando: { type: boolean }
+        segundos_activo: { type: number }
+    PeticionPrediccion:
+      type: object
+      description: Envía `entrada` o `filas`.
+      properties:
+        entrada:
+          type: array
+          items: { type: number }
+          description: Una persona
+          example: [30, 400, 0.1, 0.1, 0, 1, 0, 0.3]
+        filas:
+          type: array
+          maxItems: 1000
+          items:
+            type: array
+            items: { type: number }
+          description: Varias personas (lote)
+          example: [[30, 400, 0.1, 0.1, 0, 1, 0, 0.3], [60, 150, 0.07, 0.07, 0, 0, 1, 0.5]]
+        columnas:
+          type: array
+          items: { type: string }
+          description: Opcional; nombres de las variables (se comprueba la cantidad)
+    Prediccion:
+      type: object
+      properties:
+        probabilidad: { type: number, example: 0.37 }
+        clase: { type: integer, enum: [0, 1], description: "1 = probable deserción" }
+        umbral: { type: number, example: 0.48 }
+        latencia_ms: { type: number, example: 0.05 }
+        origen: { type: string, enum: [calculo, cache, mongo] }
+        ejecucion_id: { type: string }
+    PrediccionLote:
+      type: object
+      properties:
+        predicciones:
+          type: array
+          items:
+            type: object
+            properties:
+              probabilidad: { type: number }
+              clase: { type: integer, enum: [0, 1] }
+              origen: { type: string, example: calculo }
+        total: { type: integer }
+        positivas: { type: integer, description: "Filas con clase 1" }
+        umbral: { type: number }
+        latencia_ms: { type: number, description: "Tiempo de todo el lote" }
+        ejecucion_id: { type: string }
+    PeticionEntrenamiento:
+      type: object
+      properties:
+        epocas: { type: integer, default: 10 }
+        lote: { type: integer, default: 1024, description: "Filas por mini-lote y nodo (0 = lote completo)" }
+        tasa: { type: number, default: 0.1 }
+        peso_positivo: { type: number, default: 1 }
+        semilla: { type: integer, default: 42 }
+    Entrenamiento:
+      type: object
+      properties:
+        id: { type: string }
+        estado: { type: string, example: en_curso }
+        nodos: { type: integer, example: 2 }
+    Metricas:
+      type: object
+      properties:
+        modelo: { type: object }
+        cluster: { type: object }
+        api: { type: object }
+        ultima_ejecucion: { type: object, nullable: true }
+        metricas: { type: array, items: { type: object } }
+        evaluacion: { type: object }
